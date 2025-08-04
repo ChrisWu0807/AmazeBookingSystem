@@ -41,8 +41,8 @@ cd ..
 # 8. 設置環境變數
 echo "🔧 設置環境變數..."
 cat > /var/www/amaze-booking/server/.env << EOF
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URI=https://your-domain.com/auth/google/callback
 PORT=3050
 NODE_ENV=production

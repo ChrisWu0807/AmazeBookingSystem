@@ -37,8 +37,8 @@ git push origin main
 在 Vercel Dashboard 中添加以下環境變數：
 
 ```
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URI=https://your-vercel-url.vercel.app/auth/google/callback
 NODE_ENV=production
 ```
@@ -64,8 +64,8 @@ NODE_ENV=production
 在 Zeabur Dashboard 中添加環境變數：
 
 ```
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URI=https://your-zeabur-url.zeabur.app/auth/google/callback
 NODE_ENV=production
 ```
@@ -112,8 +112,8 @@ git clone https://github.com/ChrisWu0807/AmazeBookingSystem.git .
 ```bash
 # 創建環境變數檔案
 cat > /var/www/amaze-booking/server/.env << EOF
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URI=https://your-domain.com/auth/google/callback
 PORT=3050
 NODE_ENV=production
