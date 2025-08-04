@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const moment = require('moment');
+const path = require('path');
 const GoogleCalendarOAuthService = require('./googleCalendar-oauth');
 
 const app = express();
@@ -16,6 +17,11 @@ app.use(express.json());
 
 // 初始化 Google Calendar 服務
 const calendarService = new GoogleCalendarOAuthService();
+
+// 在生產環境中提供靜態檔案
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/build')));
+}
 
 // 檢查認證狀態
 app.get('/api/auth/status', async (req, res) => {
@@ -257,6 +263,18 @@ app.get('/api/health', (req, res) => {
     message: 'Amaze 預約系統 - OAuth 版本',
     timestamp: new Date().toISOString()
   });
+});
+
+// 處理所有其他路由（SPA 路由）
+app.get('*', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.sendFile(path.join(__dirname, '../client/build/index.html'));
+  } else {
+    res.status(404).json({
+      success: false,
+      message: '路由不存在'
+    });
+  }
 });
 
 // 啟動伺服器
