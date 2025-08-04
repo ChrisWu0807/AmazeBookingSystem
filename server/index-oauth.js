@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const moment = require('moment');
 const path = require('path');
+const fs = require('fs');
 const GoogleCalendarOAuthService = require('./googleCalendar-oauth');
 
 const app = express();
@@ -20,7 +21,16 @@ const calendarService = new GoogleCalendarOAuthService();
 
 // 在生產環境中提供靜態檔案
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
+  const staticPath = path.join(__dirname, '../client/build');
+  console.log('📁 靜態檔案路徑:', staticPath);
+  console.log('📁 靜態檔案是否存在:', fs.existsSync(staticPath));
+  
+  if (fs.existsSync(staticPath)) {
+    app.use(express.static(staticPath));
+    console.log('✅ 靜態檔案服務已啟用');
+  } else {
+    console.log('❌ 靜態檔案目錄不存在');
+  }
 }
 
 // 檢查認證狀態
@@ -261,14 +271,30 @@ app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'Amaze 預約系統 - OAuth 版本',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    port: PORT
   });
 });
 
 // 處理所有其他路由（SPA 路由）
 app.get('*', (req, res) => {
+  console.log('🌐 訪問路由:', req.path);
+  
   if (process.env.NODE_ENV === 'production') {
-    res.sendFile(path.join(__dirname, '../client/build/index.html'));
+    const indexPath = path.join(__dirname, '../client/build/index.html');
+    console.log('📁 index.html 路徑:', indexPath);
+    console.log('📁 index.html 是否存在:', fs.existsSync(indexPath));
+    
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).json({
+        success: false,
+        message: '前端檔案不存在',
+        path: indexPath
+      });
+    }
   } else {
     res.status(404).json({
       success: false,
@@ -286,6 +312,7 @@ async function startServer() {
       console.log(`🌐 伺服器運行在: http://localhost:${PORT}`);
       console.log(`📱 前端應用: http://localhost:3051`);
       console.log(`🔐 認證 URL: http://localhost:${PORT}/api/auth/url`);
+      console.log(`🌍 環境: ${process.env.NODE_ENV}`);
     });
   } catch (error) {
     console.error('❌ 伺服器啟動失敗:', error);
