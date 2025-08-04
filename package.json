@@ -8,9 +8,8 @@
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
-    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
-    "start": "cd server && npm start",
-    "postinstall": "npm run install-all"
+    "install-all": "cd server && npm install && cd ../client && npm install",
+    "start": "cd server && npm start"
   },
   "keywords": ["booking", "reservation", "schedule", "amaze"],
   "author": "Amaze Team",
