@@ -51,8 +51,8 @@ git clone https://github.com/ChrisWu0807/AmazeBookingSystem.git .
 ```bash
 # 創建環境變數檔案
 cat > /var/www/amaze-booking/server/.env << EOF
-GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_ID=your_oauth_client_id_here
+GOOGLE_CLIENT_SECRET=your_oauth_client_secret_here
 GOOGLE_REDIRECT_URI=https://43.167.198.15/auth/google/callback
 PORT=3050
 NODE_ENV=production
