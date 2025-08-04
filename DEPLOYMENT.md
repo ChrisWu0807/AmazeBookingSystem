@@ -37,17 +37,14 @@ git push origin main
 在 Vercel Dashboard 中添加以下環境變數：
 
 ```
-GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
-GOOGLE_REDIRECT_URI=https://your-vercel-url.vercel.app/auth/google/callback
 NODE_ENV=production
 ```
 
-### 第四步：更新 Google OAuth 設定
-1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
-2. 找到您的 OAuth 2.0 憑證
-3. 添加授權的重定向 URI：
-   - `https://your-vercel-url.vercel.app/auth/google/callback`
+**注意：** 本系統使用 Google Calendar 服務帳戶憑證，憑證文件 `service-account-key.json` 已包含在專案中，不需要額外的 OAuth 配置。
+
+### 第四步：確認 Google Calendar 權限
+1. 確保您的 Google Calendar 已與服務帳戶共享
+2. 服務帳戶電子郵件：`amaze-booking-calendar@booking-system-468006.iam.gserviceaccount.com`
 
 ## 🎯 Zeabur 部署步驟
 
@@ -64,9 +61,6 @@ NODE_ENV=production
 在 Zeabur Dashboard 中添加環境變數：
 
 ```
-GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
-GOOGLE_REDIRECT_URI=https://your-zeabur-url.zeabur.app/auth/google/callback
 NODE_ENV=production
 ```
 

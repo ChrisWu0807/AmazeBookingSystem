@@ -40,7 +40,7 @@ class GoogleCalendarService {
 
     try {
       const response = await this.calendar.events.insert({
-        calendarId: 'amaze-booking-calendar@booking-system-468006.iam.gserviceaccount.com',
+        calendarId: 'primary',
         resource: event,
       });
       
@@ -64,7 +64,7 @@ class GoogleCalendarService {
       const endOfDay = `${date}T23:59:59+08:00`;
       
       const response = await this.calendar.events.list({
-        calendarId: 'amaze-booking-calendar@booking-system-468006.iam.gserviceaccount.com',
+        calendarId: 'primary',
         timeMin: startOfDay,
         timeMax: endOfDay,
         singleEvents: true,

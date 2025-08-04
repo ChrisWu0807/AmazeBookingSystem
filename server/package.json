@@ -2,10 +2,10 @@
   "name": "amaze-booking-server",
   "version": "1.0.0",
   "description": "Amaze 預約系統後端 API",
-  "main": "index-oauth.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node index-oauth.js",
-    "dev": "nodemon index-oauth.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "init-db": "node init-db.js"
   },
   "dependencies": {

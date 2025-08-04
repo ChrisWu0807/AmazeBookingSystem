@@ -2,7 +2,7 @@
   "name": "amaze-booking-system",
   "version": "1.0.0",
   "description": "Amaze 預約系統 - 客服人員使用的預約管理平台",
-  "main": "server/index-oauth.js",
+  "main": "server/index.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm run dev",
