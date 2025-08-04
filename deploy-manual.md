@@ -3,15 +3,15 @@
 ## 📋 部署前準備
 
 ### 伺服器資訊
-- **IP 地址**：43.167.198.15
+- **IP 地址**：your-server-ip
 - **作業系統**：Ubuntu
-- **密碼**：k81su4w7J2ly*4XrEV
+- **密碼**：your-server-password
 
 ## 🔧 第一步：連接到伺服器
 
 ```bash
-ssh root@43.167.198.15
-# 密碼：k81su4w7J2ly*4XrEV
+ssh root@your-server-ip
+# 密碼：your-server-password
 ```
 
 ## 📦 第二步：安裝必要軟體
@@ -51,9 +51,9 @@ git clone https://github.com/ChrisWu0807/AmazeBookingSystem.git .
 ```bash
 # 創建環境變數檔案
 cat > /var/www/amaze-booking/server/.env << EOF
-GOOGLE_CLIENT_ID=your_oauth_client_id_here
-GOOGLE_CLIENT_SECRET=your_oauth_client_secret_here
-GOOGLE_REDIRECT_URI=https://43.167.198.15/auth/google/callback
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=https://your-domain.com/auth/google/callback
 PORT=3050
 NODE_ENV=production
 EOF
@@ -84,7 +84,7 @@ cd /var/www/amaze-booking
 sudo tee /etc/nginx/sites-available/amaze-booking << EOF
 server {
     listen 80;
-    server_name 43.167.198.15;
+    server_name your-domain.com;
 
     # 前端靜態檔案
     location / {
@@ -151,7 +151,7 @@ pm2 startup
 2. 找到您的 OAuth 2.0 憑證
 3. 更新授權的重定向 URI：
    - 從：`http://localhost:3050/auth/google/callback`
-   - 改為：`https://43.167.198.15/auth/google/callback`
+   - 改為：`https://your-domain.com/auth/google/callback`
 
 ## ✅ 第九步：測試部署
 
@@ -161,14 +161,14 @@ pm2 status
 sudo systemctl status nginx
 
 # 測試 API
-curl http://43.167.198.15/api/health
+curl http://your-domain.com/api/health
 ```
 
 ## 🌐 訪問地址
 
-- **前端應用**：http://43.167.198.15
-- **API 端點**：http://43.167.198.15/api
-- **OAuth 回調**：http://43.167.198.15/auth/google/callback
+- **前端應用**：http://your-domain.com
+- **API 端點**：http://your-domain.com/api
+- **OAuth 回調**：http://your-domain.com/auth/google/callback
 
 ## 🔧 常用管理命令
 

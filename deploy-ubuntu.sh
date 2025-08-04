@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Amaze 預約系統 - Ubuntu 伺服器部署腳本
-# 伺服器：43.167.198.15
+# 伺服器：your-server-ip
 
 echo "🚀 開始部署 Amaze 預約系統到 Ubuntu 伺服器..."
 
@@ -41,9 +41,9 @@ cd ..
 # 8. 設置環境變數
 echo "🔧 設置環境變數..."
 cat > /var/www/amaze-booking/server/.env << EOF
-GOOGLE_CLIENT_ID=your_oauth_client_id_here
-GOOGLE_CLIENT_SECRET=your_oauth_client_secret_here
-GOOGLE_REDIRECT_URI=https://43.167.198.15/auth/google/callback
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=https://your-domain.com/auth/google/callback
 PORT=3050
 NODE_ENV=production
 EOF
@@ -59,7 +59,7 @@ echo "🔧 配置 Nginx..."
 sudo tee /etc/nginx/sites-available/amaze-booking << EOF
 server {
     listen 80;
-    server_name 43.167.198.15;
+    server_name your-domain.com;
 
     # 前端靜態檔案
     location / {
@@ -110,7 +110,7 @@ pm2 save
 pm2 startup
 
 echo "✅ 部署完成！"
-echo "🌐 訪問地址：http://43.167.198.15"
-echo "📱 前端：http://43.167.198.15"
-echo "🔧 API：http://43.167.198.15/api"
-echo "🔐 OAuth：http://43.167.198.15/auth/google/callback" 
+echo "🌐 訪問地址：http://your-domain.com"
+echo "📱 前端：http://your-domain.com"
+echo "🔧 API：http://your-domain.com/api"
+echo "🔐 OAuth：http://your-domain.com/auth/google/callback" 

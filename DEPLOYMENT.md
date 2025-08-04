@@ -37,8 +37,8 @@ git push origin main
 在 Vercel Dashboard 中添加以下環境變數：
 
 ```
-GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URI=https://your-vercel-url.vercel.app/auth/google/callback
 NODE_ENV=production
 ```
@@ -64,8 +64,8 @@ NODE_ENV=production
 在 Zeabur Dashboard 中添加環境變數：
 
 ```
-GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URI=https://your-zeabur-url.zeabur.app/auth/google/callback
 NODE_ENV=production
 ```
@@ -74,8 +74,8 @@ NODE_ENV=production
 
 ### 第一步：連接伺服器
 ```bash
-ssh root@43.167.198.15
-# 密碼：k81su4w7J2ly*4XrEV
+ssh root@your-server-ip
+# 輸入您的伺服器密碼
 ```
 
 ### 第二步：安裝必要軟體
@@ -112,9 +112,9 @@ git clone https://github.com/ChrisWu0807/AmazeBookingSystem.git .
 ```bash
 # 創建環境變數檔案
 cat > /var/www/amaze-booking/server/.env << EOF
-GOOGLE_CLIENT_ID=679955325298-4nnvpip7s9elbk5qucjr5a5sn0oosu37.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
-GOOGLE_REDIRECT_URI=https://43.167.198.15/auth/google/callback
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=https://your-domain.com/auth/google/callback
 PORT=3050
 NODE_ENV=production
 EOF
@@ -143,7 +143,7 @@ cd /var/www/amaze-booking
 sudo tee /etc/nginx/sites-available/amaze-booking << EOF
 server {
     listen 80;
-    server_name 43.167.198.15;
+    server_name your-domain.com;
 
     # 前端靜態檔案
     location / {
