@@ -1,85 +1,50 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../config/api';
 
 const ApiTest = () => {
+  const [healthStatus, setHealthStatus] = useState('');
   const [testResult, setTestResult] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const testApi = async () => {
-    setLoading(true);
+  const testHealth = async () => {
     try {
-      const response = await axios.get('/api/health');
-      setTestResult(`✅ API 連接成功: ${JSON.stringify(response.data, null, 2)}`);
+      const response = await api.get('/health');
+      setHealthStatus(`✅ 健康檢查成功: ${JSON.stringify(response.data)}`);
     } catch (error) {
-      setTestResult(`❌ API 連接失敗: ${error.message}`);
-    } finally {
-      setLoading(false);
+      setHealthStatus(`❌ 健康檢查失敗: ${error.message}`);
     }
   };
 
-  const testCreateReservation = async () => {
-    setLoading(true);
-    try {
-      const testData = {
-        name: '測試客戶',
-        phone: '0912345678',
-        date: '2025-01-15',
-        time: '15:00',
-        note: 'API 測試預約',
-        check: '未確認'
-      };
+  const testReservation = async () => {
+    const testData = {
+      name: '測試客戶',
+      phone: '0912345678',
+      date: '2025-01-15',
+      time: '14:00',
+      note: '這是一個測試預約',
+      check: '未確認'
+    };
 
-      const response = await axios.post('/api/reservations', testData);
-      setTestResult(`✅ 新增預約成功: ${JSON.stringify(response.data, null, 2)}`);
+    try {
+      const response = await api.post('/reservations', testData);
+      setTestResult(`✅ 測試預約成功: ${JSON.stringify(response.data)}`);
     } catch (error) {
-      setTestResult(`❌ 新增預約失敗: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setLoading(false);
+      setTestResult(`❌ 測試預約失敗: ${error.message}`);
     }
   };
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div className="api-test">
       <h2>API 測試</h2>
-      <div style={{ marginBottom: '20px' }}>
-        <button 
-          className="btn btn-primary" 
-          onClick={testApi}
-          disabled={loading}
-          style={{ marginRight: '10px' }}
-        >
-          測試 API 連接
-        </button>
-        <button 
-          className="btn btn-success" 
-          onClick={testCreateReservation}
-          disabled={loading}
-        >
-          測試新增預約
-        </button>
+      
+      <div className="test-section">
+        <button onClick={testHealth}>測試健康檢查</button>
+        <div className="result">{healthStatus}</div>
       </div>
       
-      {loading && (
-        <div className="loading">
-          <div className="spinner"></div>
-          測試中...
-        </div>
-      )}
-      
-      {testResult && (
-        <div className="card">
-          <h3>測試結果：</h3>
-          <pre style={{ 
-            backgroundColor: '#f5f5f5', 
-            padding: '10px', 
-            borderRadius: '4px',
-            overflow: 'auto',
-            whiteSpace: 'pre-wrap'
-          }}>
-            {testResult}
-          </pre>
-        </div>
-      )}
+      <div className="test-section">
+        <button onClick={testReservation}>測試預約 API</button>
+        <div className="result">{testResult}</div>
+      </div>
     </div>
   );
 };

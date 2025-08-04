@@ -4,11 +4,28 @@ const path = require('path');
 
 class GoogleCalendarOAuthService {
   constructor() {
+    // 動態獲取重定向 URI
+    const getRedirectUri = () => {
+      if (process.env.GOOGLE_REDIRECT_URI) {
+        return process.env.GOOGLE_REDIRECT_URI;
+      }
+      
+      // 在生產環境中，使用環境變數或默認值
+      if (process.env.NODE_ENV === 'production') {
+        return process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}/auth/google/callback`
+          : process.env.GOOGLE_REDIRECT_URI || 'https://your-domain.com/auth/google/callback';
+      }
+      
+      // 開發環境
+      return 'http://localhost:3050/auth/google/callback';
+    };
+
     // OAuth 2.0 配置
     this.oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3050/auth/google/callback'
+      getRedirectUri()
     );
     
     this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });

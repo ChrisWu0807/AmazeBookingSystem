@@ -8,11 +8,11 @@
 - **前端**：React 18 + React Router + Axios + Lucide React
 - **後端**：Node.js + Express.js + Google Calendar API
 - **認證**：Google OAuth 2.0
-- **部署**：GitHub Pages + Heroku/Vercel
+- **部署**：Vercel / Zeabur / Ubuntu 伺服器
 
 ### 端口配置
 - **後端 API**：http://localhost:3050
-- **前端應用**：http://localhost:3050
+- **前端應用**：http://localhost:3000
 
 ## 📁 專案結構
 
@@ -26,6 +26,8 @@ Amaze_Booking_System/
 │   │   │   ├── ApiTest.js
 │   │   │   ├── SimpleTest.js
 │   │   │   └── DebugSchedule.js
+│   │   ├── config/         # 配置文件
+│   │   │   └── api.js      # API 配置
 │   │   ├── App.js
 │   │   └── index.js
 │   └── package.json
@@ -35,7 +37,10 @@ Amaze_Booking_System/
 │   ├── oauth-setup.md     # OAuth 設置說明
 │   └── package.json
 ├── package.json           # 根目錄配置
-└── README.md             # 專案說明文件
+├── vercel.json           # Vercel 部署配置
+├── zeabur.toml          # Zeabur 部署配置
+├── DEPLOYMENT.md        # 詳細部署指南
+└── README.md            # 專案說明文件
 ```
 
 ## 🚀 快速啟動
@@ -50,15 +55,16 @@ npm run install-all
 2. 創建新專案或選擇現有專案
 3. 啟用 Google Calendar API
 4. 創建 OAuth 2.0 憑證
-5. 設定重定向 URI：`https://your-domain.com/auth/google/callback`
+5. 設定重定向 URI：`http://localhost:3050/auth/google/callback`
 
 ### 3. 設置環境變數
 在 `server/.env` 檔案中填入：
 ```env
 GOOGLE_CLIENT_ID=your_oauth_client_id
 GOOGLE_CLIENT_SECRET=your_oauth_client_secret
-GOOGLE_REDIRECT_URI=https://your-domain.com/auth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:3050/auth/google/callback
 PORT=3050
+NODE_ENV=development
 ```
 
 ### 4. 啟動系統
@@ -66,37 +72,34 @@ PORT=3050
 npm run dev
 ```
 
-## 🌐 部署到 GitHub
+## 🌐 雲端部署
 
-### 1. 推送到 GitHub
+### 🎯 Vercel 部署（推薦）
 ```bash
+# 1. 推送到 GitHub
 git add .
-git commit -m "Initial commit: Amaze Booking System"
-git branch -M main
-git remote add origin https://github.com/your-username/amaze-booking-system.git
-git push -u origin main
+git commit -m "Prepare for Vercel deployment"
+git push origin main
+
+# 2. 連接 Vercel
+# 前往 https://vercel.com/dashboard
+# 選擇 GitHub 倉庫並部署
 ```
 
-### 2. 設置 GitHub Pages
-1. 前往 GitHub 倉庫設定
-2. 啟用 GitHub Pages
-3. 選擇 `main` 分支
-4. 設定自定義域名（可選）
-
-### 3. 部署後端 API
-推薦使用 Vercel 或 Heroku：
-
-**Vercel 部署：**
+### 🎯 Zeabur 部署
 ```bash
-npm install -g vercel
-vercel
+# 1. 推送到 GitHub
+git add .
+git commit -m "Prepare for Zeabur deployment"
+git push origin main
+
+# 2. 連接 Zeabur
+# 前往 https://zeabur.com/
+# 選擇 GitHub 倉庫並部署
 ```
 
-**Heroku 部署：**
-```bash
-heroku create amaze-booking-api
-git push heroku main
-```
+### 🎯 Ubuntu 伺服器部署
+詳細步驟請參考 [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ## ✨ 功能特色
 
@@ -121,6 +124,7 @@ git push heroku main
 - ✅ `GET /api/reservations/date/:date` - 查詢特定日期預約
 - ✅ `GET /api/auth/status` - 檢查認證狀態
 - ✅ `GET /api/auth/url` - 獲取授權 URL
+- ✅ `GET /api/health` - 健康檢查
 
 ## 🔐 OAuth 2.0 認證流程
 
@@ -156,12 +160,34 @@ Google Calendar 事件包含：
 - 載入狀態指示
 - 成功訊息回饋
 
+## 🔧 配置說明
+
+### 動態環境變數支援
+- ✅ 支援 Vercel 自動環境變數
+- ✅ 支援 Zeabur 環境變數
+- ✅ 支援自定義域名
+- ✅ 自動檢測生產/開發環境
+
+### API 配置
+- ✅ 動態 API 基礎 URL
+- ✅ 生產環境相對路徑
+- ✅ 開發環境代理配置
+- ✅ 錯誤處理和重試
+
+### OAuth 配置
+- ✅ 動態重定向 URI
+- ✅ 支援多種部署平台
+- ✅ 自動環境檢測
+- ✅ 安全的憑證管理
+
 ## 🔒 安全性
 
 - 輸入驗證防止無效資料
 - 時段衝突檢查避免重複預約
 - OAuth 2.0 安全認證
 - 環境變數保護敏感資訊
+- CORS 配置
+- Helmet 安全中間件
 
 ## 📞 技術支援
 
@@ -172,6 +198,14 @@ Google Calendar 事件包含：
 4. 具體功能需求描述
 
 ## 📝 更新日誌
+
+### v3.0.0 - 雲端部署版本
+- ✅ 支援 Vercel 自動部署
+- ✅ 支援 Zeabur 自動部署
+- ✅ 動態環境變數配置
+- ✅ 動態 API URL 配置
+- ✅ 改進的錯誤處理
+- ✅ 詳細部署文檔
 
 ### v2.0.0 - OAuth 2.0 版本
 - ✅ 改用 Google OAuth 2.0 認證

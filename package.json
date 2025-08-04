@@ -2,18 +2,24 @@
   "name": "amaze-booking-system",
   "version": "1.0.0",
   "description": "Amaze 預約系統 - 客服人員使用的預約管理平台",
-  "main": "server/index.js",
+  "main": "server/index-oauth.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
-    "install-all": "npm install && cd server && npm install && cd ../client && npm install"
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "start": "cd server && npm start",
+    "postinstall": "npm run install-all"
   },
   "keywords": ["booking", "reservation", "schedule", "amaze"],
   "author": "Amaze Team",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 } 

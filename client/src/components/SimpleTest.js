@@ -1,56 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../config/api';
 
 const SimpleTest = () => {
-  const [testResult, setTestResult] = useState('');
+  const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const testScheduleAPI = async () => {
+  const fetchReservations = async () => {
     setLoading(true);
     try {
-      // 測試當前週的資料
-      const response = await axios.get('/api/reservations?week=2025-W32');
-      setTestResult(`✅ 排程表 API 測試成功: ${JSON.stringify(response.data, null, 2)}`);
+      const response = await api.get('/reservations?week=2025-W32');
+      setReservations(response.data.data || []);
     } catch (error) {
-      setTestResult(`❌ 排程表 API 測試失敗: ${error.message}`);
+      console.error('獲取預約失敗:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchReservations();
+  }, []);
+
   return (
-    <div style={{ padding: '20px' }}>
+    <div className="simple-test">
       <h2>簡單測試</h2>
-      <button 
-        className="btn btn-primary" 
-        onClick={testScheduleAPI}
-        disabled={loading}
-      >
-        測試排程表 API
+      <button onClick={fetchReservations} disabled={loading}>
+        {loading ? '載入中...' : '重新載入預約'}
       </button>
       
-      {loading && (
-        <div className="loading">
-          <div className="spinner"></div>
-          測試中...
-        </div>
-      )}
-      
-      {testResult && (
-        <div className="card">
-          <h3>測試結果：</h3>
-          <pre style={{ 
-            backgroundColor: '#f5f5f5', 
-            padding: '10px', 
-            borderRadius: '4px',
-            overflow: 'auto',
-            whiteSpace: 'pre-wrap',
-            fontSize: '12px'
-          }}>
-            {testResult}
-          </pre>
-        </div>
-      )}
+      <div className="reservations-list">
+        {reservations.map((reservation, index) => (
+          <div key={index} className="reservation-item">
+            <h3>{reservation.name}</h3>
+            <p>電話: {reservation.phone}</p>
+            <p>日期: {reservation.date}</p>
+            <p>時間: {reservation.time}</p>
+            <p>狀態: {reservation.check}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

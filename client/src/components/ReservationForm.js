@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../config/api';
 import { UserPlus, Phone, Calendar, Clock, FileText, CheckCircle } from 'lucide-react';
 
 const ReservationForm = () => {
@@ -31,7 +31,7 @@ const ReservationForm = () => {
   const fetchAvailableSlots = async (date) => {
     try {
       // 獲取該日期的所有 Google Calendar 事件
-      const response = await axios.get(`/api/reservations/date/${date}`);
+      const response = await api.get(`/reservations/date/${date}`);
       const calendarEvents = response.data.data || [];
       
       // 從事件中提取已預約的時段
@@ -82,7 +82,7 @@ const ReservationForm = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await axios.post('/api/reservations', {
+      const response = await api.post('/reservations', {
         ...formData,
         check: '未確認' // 客戶預約預設為未確認
       });
