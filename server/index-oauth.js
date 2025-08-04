@@ -10,6 +10,9 @@ const GoogleCalendarOAuthService = require('./googleCalendar-oauth');
 const app = express();
 const PORT = process.env.PORT || 3050;
 
+// 設置環境變數
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
 // 中間件
 app.use(helmet());
 app.use(cors());
@@ -29,7 +32,23 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express.static(staticPath));
     console.log('✅ 靜態檔案服務已啟用');
   } else {
-    console.log('❌ 靜態檔案目錄不存在');
+    console.log('❌ 靜態檔案目錄不存在，嘗試其他路徑...');
+    
+    // 嘗試其他可能的路徑
+    const alternativePaths = [
+      path.join(__dirname, '../../client/build'),
+      path.join(__dirname, './client/build'),
+      path.join(process.cwd(), 'client/build')
+    ];
+    
+    for (const altPath of alternativePaths) {
+      console.log('🔍 嘗試路徑:', altPath);
+      if (fs.existsSync(altPath)) {
+        app.use(express.static(altPath));
+        console.log('✅ 靜態檔案服務已啟用 (替代路徑)');
+        break;
+      }
+    }
   }
 }
 
@@ -273,7 +292,9 @@ app.get('/api/health', (req, res) => {
     message: 'Amaze 預約系統 - OAuth 版本',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    port: PORT
+    port: PORT,
+    cwd: process.cwd(),
+    __dirname: __dirname
   });
 });
 
@@ -282,19 +303,31 @@ app.get('*', (req, res) => {
   console.log('🌐 訪問路由:', req.path);
   
   if (process.env.NODE_ENV === 'production') {
-    const indexPath = path.join(__dirname, '../client/build/index.html');
-    console.log('📁 index.html 路徑:', indexPath);
-    console.log('📁 index.html 是否存在:', fs.existsSync(indexPath));
+    // 嘗試多個可能的 index.html 路徑
+    const possiblePaths = [
+      path.join(__dirname, '../client/build/index.html'),
+      path.join(__dirname, '../../client/build/index.html'),
+      path.join(__dirname, './client/build/index.html'),
+      path.join(process.cwd(), 'client/build/index.html')
+    ];
     
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).json({
-        success: false,
-        message: '前端檔案不存在',
-        path: indexPath
-      });
+    console.log('🔍 嘗試 index.html 路徑:');
+    for (const indexPath of possiblePaths) {
+      console.log('  -', indexPath, ':', fs.existsSync(indexPath));
+      if (fs.existsSync(indexPath)) {
+        console.log('✅ 找到 index.html:', indexPath);
+        return res.sendFile(indexPath);
+      }
     }
+    
+    console.log('❌ 所有路徑都不存在');
+    res.status(404).json({
+      success: false,
+      message: '前端檔案不存在',
+      paths: possiblePaths,
+      cwd: process.cwd(),
+      __dirname: __dirname
+    });
   } else {
     res.status(404).json({
       success: false,
@@ -313,6 +346,8 @@ async function startServer() {
       console.log(`📱 前端應用: http://localhost:3051`);
       console.log(`🔐 認證 URL: http://localhost:${PORT}/api/auth/url`);
       console.log(`🌍 環境: ${process.env.NODE_ENV}`);
+      console.log(`📁 工作目錄: ${process.cwd()}`);
+      console.log(`📁 __dirname: ${__dirname}`);
     });
   } catch (error) {
     console.error('❌ 伺服器啟動失敗:', error);
