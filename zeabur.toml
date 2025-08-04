@@ -1,10 +1,15 @@
 [build]
 builder = "nixpacks"
 
+[build.steps]
+install = "npm run install-all"
+build = "npm run build"
+
 [deploy]
 startCommand = "npm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 
 [env]
-NODE_ENV = "production" 
+NODE_ENV = "production"
+PORT = "8080" 
