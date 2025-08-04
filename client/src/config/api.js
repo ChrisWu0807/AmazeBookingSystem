@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 // API 配置
 const getApiBaseUrl = () => {
   // 在生產環境中，使用相對路徑（會被代理到後端）
@@ -10,8 +12,6 @@ const getApiBaseUrl = () => {
 };
 
 // 創建 axios 實例
-import axios from 'axios';
-
 const api = axios.create({
   baseURL: getApiBaseUrl(),
   timeout: 10000,
