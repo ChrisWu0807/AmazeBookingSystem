@@ -5,6 +5,7 @@ import ReservationForm from './components/ReservationForm';
 import ApiTest from './components/ApiTest';
 import SimpleTest from './components/SimpleTest';
 import DebugSchedule from './components/DebugSchedule';
+import AdminDashboard from './components/AdminDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
@@ -20,6 +21,7 @@ function App() {
               <Route path="/test" element={<ApiTest />} />
               <Route path="/simple" element={<SimpleTest />} />
               <Route path="/debug" element={<DebugSchedule />} />
+              <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </div>
         </div>

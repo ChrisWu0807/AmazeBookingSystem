@@ -11,6 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 const DatabaseService = require('./database');
 const GoogleCalendarService = require('./googleCalendar-oauth');
 const authRoutes = require('./auth-routes');
+const adminRoutes = require('./admin-routes');
 
 const app = express();
 const PORT = process.env.PORT || 3050;
@@ -39,6 +40,9 @@ const maskPhoneNumber = (phone) => {
 
 // 添加授權路由
 app.use('/api', authRoutes);
+
+// 添加管理員路由
+app.use('/api/admin', adminRoutes);
 
 // 添加授權回調路由（不在 /api 路徑下）
 app.get('/auth/callback', async (req, res) => {
@@ -108,6 +112,45 @@ app.post('/api/reservations', async (req, res) => {
         success: false,
         message: '時間格式錯誤，請使用 HH:MM 格式'
       });
+    }
+
+    // 檢查是否為假日（從Google Calendar）
+    const calendarService = new GoogleCalendarService();
+    try {
+      const events = await calendarService.getEventsByDate(date);
+      
+      // 查找假日事件（標題包含"假日"、"休息"、"暫停"等關鍵字）
+      const holidayEvent = events.find(event => {
+        const title = event.summary?.toLowerCase() || '';
+        const keywords = ['假日', '休息', '暫停', 'holiday', 'closed', 'break'];
+        return keywords.some(keyword => title.includes(keyword));
+      });
+      
+      if (holidayEvent) {
+        // 如果假日事件有描述（包含限制時段），檢查當前時段是否被限制
+        if (holidayEvent.description) {
+          try {
+            const restrictedSlots = JSON.parse(holidayEvent.description);
+            if (restrictedSlots.length > 0 && restrictedSlots.includes(time)) {
+              return res.status(400).json({
+                success: false,
+                message: `該日期為假日（${holidayEvent.summary}），指定時段暫停預約`
+              });
+            }
+          } catch (error) {
+            console.error('解析假日時段限制失敗:', error);
+          }
+        } else {
+          // 如果沒有指定時段，整個日期都暫停預約
+          return res.status(400).json({
+            success: false,
+            message: `該日期為假日（${holidayEvent.summary}），暫停預約`
+          });
+        }
+      }
+    } catch (error) {
+      console.error('檢查假日失敗:', error);
+      // 如果無法檢查假日，繼續預約流程
     }
 
     // 檢查時段是否已被預約
@@ -318,13 +361,30 @@ app.get('/api/reservations/date/:date', async (req, res) => {
       });
     }
 
+    // 檢查是否為假日（從Google Calendar）
     const calendarService = new GoogleCalendarService();
-      const dayReservations = await calendarService.getEventsByDate(date);
-
-    res.json({
-      success: true,
-      data: dayReservations
+    const dayReservations = await calendarService.getEventsByDate(date);
+    
+    // 查找假日事件
+    const holidayEvent = dayReservations.find(event => {
+      const title = event.summary?.toLowerCase() || '';
+      const keywords = ['假日', '休息', '暫停', 'holiday', 'closed', 'break'];
+      return keywords.some(keyword => title.includes(keyword));
     });
+
+    // 如果有假日設置，添加假日信息到響應中
+    const response = {
+      success: true,
+      data: dayReservations,
+      holiday: holidayEvent ? {
+        id: holidayEvent.id,
+        date: date,
+        description: holidayEvent.summary,
+        time_slots: holidayEvent.description ? JSON.parse(holidayEvent.description) : []
+      } : null
+    };
+
+    res.json(response);
 
   } catch (error) {
     console.error('取得日期預約錯誤:', error);

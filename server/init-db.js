@@ -24,6 +24,7 @@ const createReservationsTable = () => {
       time TEXT NOT NULL,
       note TEXT,
       check_status TEXT DEFAULT '未確認',
+      google_event_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(date, time)
@@ -35,6 +36,28 @@ const createReservationsTable = () => {
       console.error('❌ 建立預約表失敗:', err.message);
     } else {
       console.log('✅ 預約表建立成功');
+    }
+  });
+};
+
+// 建立假日表
+const createHolidaysTable = () => {
+  const sql = `
+    CREATE TABLE IF NOT EXISTS holidays (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL UNIQUE,
+      description TEXT NOT NULL,
+      time_slots TEXT DEFAULT '[]',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+
+  db.run(sql, (err) => {
+    if (err) {
+      console.error('❌ 建立假日表失敗:', err.message);
+    } else {
+      console.log('✅ 假日表建立成功');
     }
   });
 };
@@ -111,6 +134,7 @@ const initDatabase = () => {
   console.log('🚀 開始初始化 Amaze 預約系統資料庫...');
   
   createReservationsTable();
+  createHolidaysTable();
   
   // 等待表建立完成後建立索引和插入測試資料
   setTimeout(() => {

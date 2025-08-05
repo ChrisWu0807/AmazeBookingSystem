@@ -190,6 +190,60 @@ class GoogleCalendarService {
     }
   }
 
+  async getEventsByDateRange(startDate, endDate) {
+    if (!this.isAuthorized()) {
+      throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
+    }
+
+    try {
+      const startOfRange = `${startDate}T00:00:00+08:00`;
+      const endOfRange = `${endDate}T23:59:59+08:00`;
+      
+      const response = await this.calendar.events.list({
+        calendarId: this.calendarId,
+        timeMin: startOfRange,
+        timeMax: endOfRange,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+      
+      return response.data.items;
+    } catch (error) {
+      console.error('❌ 獲取日期範圍事件失敗:', error);
+      throw error;
+    }
+  }
+
+  async deleteEvent(eventId) {
+    if (!this.isAuthorized()) {
+      throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
+    }
+
+    try {
+      await this.calendar.events.delete({
+        calendarId: this.calendarId,
+        eventId: eventId
+      });
+      
+      console.log('✅ Google Calendar 事件已刪除:', eventId);
+      return true;
+    } catch (error) {
+      console.error('❌ 刪除 Google Calendar 事件失敗:', error);
+      
+      // 如果是令牌過期，嘗試刷新
+      if (error.code === 401) {
+        console.log('🔄 嘗試刷新令牌...');
+        const refreshed = await this.refreshTokens();
+        if (refreshed) {
+          // 重試刪除事件
+          return await this.deleteEvent(eventId);
+        }
+      }
+      
+      throw error;
+    }
+  }
+
   async checkTimeSlotConflict(date, time) {
     try {
       const events = await this.getEventsByDate(date);
