@@ -4,10 +4,11 @@
 }
 
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #cb1957 0%, #a01545 100%);
   color: white;
   padding: 20px 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(203, 25, 87, 0.3);
+  position: relative;
 }
 
 .header-content {
@@ -19,11 +20,37 @@
   padding: 0 20px;
 }
 
-.logo {
-  font-size: 24px;
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-small {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.logo-text {
+  font-size: 20px;
   font-weight: bold;
   color: white;
   text-decoration: none;
+}
+
+.header-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.logo-large {
+  width: 200px;
+  height: auto;
+  object-fit: contain;
+  filter: brightness(0) invert(1); /* 將黑色logo轉為白色 */
 }
 
 .nav {
@@ -54,9 +81,10 @@
 .page-title {
   font-size: 28px;
   font-weight: bold;
-  color: #1e293b;
+  color: #cb1957;
   margin-bottom: 30px;
   text-align: center;
+  text-shadow: 0 2px 4px rgba(203, 25, 87, 0.1);
 }
 
 .form-container {
@@ -98,18 +126,18 @@
 }
 
 .time-slot-btn:hover:not(.selected):not(:disabled) {
-  border-color: #007bff;
-  background: #f8f9ff;
+  border-color: #cb1957;
+  background: #fef7f9;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(203, 25, 87, 0.15);
 }
 
 .time-slot-btn.selected {
-  border-color: #007bff !important;
-  background: #007bff !important;
+  border-color: #cb1957 !important;
+  background: #cb1957 !important;
   color: #ffffff !important;
   transform: scale(1.05);
-  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+  box-shadow: 0 4px 8px rgba(203, 25, 87, 0.3);
   animation: selectedPulse 0.6s ease-in-out;
 }
 
@@ -134,33 +162,33 @@
 
 /* 時段狀態樣式 */
 .time-slot-btn.available {
-  border-color: #28a745;
+  border-color: #cb1957;
   background: #ffffff;
   color: #333;
 }
 
 .time-slot-btn.available:hover {
-  border-color: #28a745;
-  background: #f8fff8;
+  border-color: #cb1957;
+  background: #fef7f9;
   transform: translateY(-1px);
 }
 
 .time-slot-btn.partially-booked {
-  border-color: #ffc107;
-  background: #fff8e1;
-  color: #856404;
+  border-color: #d4af37;
+  background: #fffbf0;
+  color: #8b6914;
 }
 
 .time-slot-btn.partially-booked:hover {
-  border-color: #ffc107;
-  background: #fff3cd;
+  border-color: #d4af37;
+  background: #fff8e6;
   transform: translateY(-1px);
 }
 
 .time-slot-btn.booked {
-  border-color: #dc3545;
-  background: #f8d7da;
-  color: #721c24;
+  border-color: #cb1957;
+  background: #fce7ed;
+  color: #8b1a3a;
   cursor: not-allowed;
 }
 
@@ -265,11 +293,12 @@
 }
 
 .reservation-details {
-  background: #f8f9fa;
+  background: #fef7f9;
   padding: 16px;
   border-radius: 8px;
   margin: 16px 0;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid #cb1957;
+  box-shadow: 0 2px 8px rgba(203, 25, 87, 0.1);
 }
 
 .reservation-details p {
@@ -290,6 +319,31 @@
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #cb1957 0%, #a01545 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(203, 25, 87, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #a01545 0%, #cb1957 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(203, 25, 87, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-secondary {
