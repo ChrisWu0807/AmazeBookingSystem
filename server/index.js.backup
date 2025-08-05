@@ -3,7 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const moment = require('moment');
-const path = require("path");
 const { v4: uuidv4 } = require('uuid');
 const DatabaseService = require('./database');
 const GoogleCalendarService = require('./googleCalendar');
@@ -293,14 +292,6 @@ app.get('/api/health', (req, res) => {
 });
 
 // 初始化資料庫並啟動伺服器
-
-// 提供靜態文件服務
-app.use(express.static(path.join(__dirname, "../client/build")));
-
-// 處理前端路由 - 所有非 API 路徑都返回前端應用
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/build/index.html"));
-});
 async function startServer() {
   try {
     await db.connect();

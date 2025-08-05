@@ -6,7 +6,7 @@ install = "npm run install-all"
 build = "npm run build"
 
 [deploy]
-startCommand = "cd server && npm start"
+startCommand = "npm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 
