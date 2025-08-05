@@ -1,39 +1,53 @@
 const { google } = require('googleapis');
 const fs = require('fs');
-const path = require('path');
+require('dotenv').config();
 
-class GoogleCalendarOAuthService {
+class GoogleCalendarService {
   constructor() {
-    // 動態獲取重定向 URI
-    const getRedirectUri = () => {
-      if (process.env.GOOGLE_REDIRECT_URI) {
-        return process.env.GOOGLE_REDIRECT_URI;
-      }
-      
-      // 在生產環境中，使用環境變數或默認值
-      if (process.env.NODE_ENV === 'production') {
-        return process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}/auth/google/callback`
-          : process.env.GOOGLE_REDIRECT_URI || 'https://your-domain.com/auth/google/callback';
-      }
-      
-      // 開發環境
-      return 'http://localhost:3050/auth/google/callback';
-    };
-
     // OAuth 2.0 配置
     this.oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      getRedirectUri()
+      process.env.GOOGLE_CLIENT_ID || 'YOUR_CLIENT_ID_HERE',
+      process.env.GOOGLE_CLIENT_SECRET || 'YOUR_CLIENT_SECRET_HERE',
+      process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3050/auth/callback'
     );
     
     this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+    this.calendarId = 'primary'; // 使用 primary 日曆
+    
+    // 嘗試載入已保存的令牌
+    this.loadTokens();
+  }
+
+  // 載入已保存的令牌
+  loadTokens() {
+    try {
+      if (fs.existsSync('./tokens.json')) {
+        const tokens = JSON.parse(fs.readFileSync('./tokens.json', 'utf8'));
+        this.oauth2Client.setCredentials(tokens);
+        console.log('✅ 已載入保存的令牌');
+      }
+    } catch (error) {
+      console.log('⚠️ 無法載入令牌，需要重新授權');
+    }
+  }
+
+  // 保存令牌到文件
+  saveTokens(tokens) {
+    try {
+      fs.writeFileSync('./tokens.json', JSON.stringify(tokens, null, 2));
+      console.log('✅ 令牌已保存');
+    } catch (error) {
+      console.error('❌ 保存令牌失敗:', error.message);
+    }
   }
 
   // 生成授權 URL
-  getAuthUrl() {
-    const scopes = ['https://www.googleapis.com/auth/calendar'];
+  generateAuthUrl() {
+    const scopes = [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events'
+    ];
+
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
@@ -46,47 +60,40 @@ class GoogleCalendarOAuthService {
     try {
       const { tokens } = await this.oauth2Client.getToken(code);
       this.oauth2Client.setCredentials(tokens);
-      
-      // 保存 tokens 到檔案
-      const tokenPath = path.join(__dirname, 'tokens.json');
-      fs.writeFileSync(tokenPath, JSON.stringify(tokens));
-      
-      console.log('✅ OAuth 認證成功');
-      return tokens;
-    } catch (error) {
-      console.error('❌ OAuth 認證失敗:', error);
-      throw error;
-    }
-  }
-
-  // 載入已保存的 tokens
-  loadTokens() {
-    try {
-      const tokenPath = path.join(__dirname, 'tokens.json');
-      if (fs.existsSync(tokenPath)) {
-        const tokens = JSON.parse(fs.readFileSync(tokenPath));
-        this.oauth2Client.setCredentials(tokens);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('❌ 載入 tokens 失敗:', error);
-      return false;
-    }
-  }
-
-  // 檢查認證狀態
-  async checkAuth() {
-    try {
-      const calendarList = await this.calendar.calendarList.list();
+      this.saveTokens(tokens);
+      console.log('✅ OAuth 2.0 授權成功');
       return true;
     } catch (error) {
+      console.error('❌ OAuth 2.0 授權失敗:', error.message);
       return false;
     }
   }
 
-  // 創建預約事件
+  // 檢查授權狀態
+  isAuthorized() {
+    const credentials = this.oauth2Client.credentials;
+    return credentials && credentials.access_token;
+  }
+
+  // 刷新令牌
+  async refreshTokens() {
+    try {
+      const { credentials } = await this.oauth2Client.refreshAccessToken();
+      this.oauth2Client.setCredentials(credentials);
+      this.saveTokens(credentials);
+      console.log('✅ 令牌已刷新');
+      return true;
+    } catch (error) {
+      console.error('❌ 刷新令牌失敗:', error.message);
+      return false;
+    }
+  }
+
   async createEvent(reservation) {
+    if (!this.isAuthorized()) {
+      throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
+    }
+
     const event = {
       summary: `📅 客戶預約 - ${reservation.name}`,
       description: `
@@ -115,7 +122,7 @@ class GoogleCalendarOAuthService {
 
     try {
       const response = await this.calendar.events.insert({
-        calendarId: 'primary', // 使用主要日曆
+        calendarId: this.calendarId,
         resource: event,
       });
       
@@ -123,18 +130,38 @@ class GoogleCalendarOAuthService {
       return response.data;
     } catch (error) {
       console.error('❌ Google Calendar 事件建立失敗:', error);
+      
+      // 如果是令牌過期，嘗試刷新
+      if (error.code === 401) {
+        console.log('🔄 嘗試刷新令牌...');
+        const refreshed = await this.refreshTokens();
+        if (refreshed) {
+          // 重試創建事件
+          return await this.createEvent(reservation);
+        }
+      }
+      
       throw error;
     }
   }
 
-  // 獲取特定日期的事件
+  getEndTime(startTime) {
+    const hour = parseInt(startTime.split(':')[0]);
+    const nextHour = hour === 23 ? 0 : hour + 1;
+    return `${nextHour.toString().padStart(2, '0')}:00`;
+  }
+
   async getEventsByDate(date) {
+    if (!this.isAuthorized()) {
+      throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
+    }
+
     try {
       const startOfDay = `${date}T00:00:00+08:00`;
       const endOfDay = `${date}T23:59:59+08:00`;
       
       const response = await this.calendar.events.list({
-        calendarId: 'primary', // 使用主要日曆
+        calendarId: this.calendarId,
         timeMin: startOfDay,
         timeMax: endOfDay,
         singleEvents: true,
@@ -154,11 +181,23 @@ class GoogleCalendarOAuthService {
     }
   }
 
-  getEndTime(startTime) {
-    const hour = parseInt(startTime.split(':')[0]);
-    const nextHour = hour === 23 ? 0 : hour + 1;
-    return `${nextHour.toString().padStart(2, '0')}:00`;
+  async checkTimeSlotConflict(date, time) {
+    try {
+      const events = await this.getEventsByDate(date);
+      const targetTime = `${date}T${time}:00+08:00`;
+      
+      // 檢查是否有相同時段的預約
+      return events.some(event => {
+        const eventStart = new Date(event.start);
+        const targetStart = new Date(targetTime);
+        return eventStart.getTime() === targetStart.getTime();
+      });
+    } catch (error) {
+      console.error("❌ 檢查時段衝突失敗:", error);
+      // 如果無法連接到 Google Calendar，返回 false（允許預約）
+      return false;
+    }
   }
 }
 
-module.exports = GoogleCalendarOAuthService; 
+module.exports = GoogleCalendarService; 
