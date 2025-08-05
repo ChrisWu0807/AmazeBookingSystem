@@ -78,6 +78,7 @@ const ReservationForm = () => {
   const [successData, setSuccessData] = useState({});
   const [businessHoursForDate, setBusinessHoursForDate] = useState(null);
   const [isDateClosed, setIsDateClosed] = useState(false);
+  const [holidayInfo, setHolidayInfo] = useState(null);
 
   // 當日期改變時，獲取該日期的可用時段
   useEffect(() => {
@@ -86,6 +87,9 @@ const ReservationForm = () => {
       const hours = getBusinessHoursForDate(selectedDate);
       setBusinessHoursForDate(hours);
       setIsDateClosed(hours.closed);
+      
+      // 重置假日信息
+      setHolidayInfo(null);
       
       if (!hours.closed) {
         fetchAvailableSlots(selectedDate);
@@ -107,6 +111,7 @@ const ReservationForm = () => {
       if (hours.closed) {
         setAvailableSlots([]);
         setBookedSlots({});
+        setHolidayInfo(null);
         return;
       }
       
@@ -116,6 +121,21 @@ const ReservationForm = () => {
       // 獲取該日期的所有 Google Calendar 事件
       const response = await api.get(`/reservations/date/${date}`);
       const calendarEvents = response.data.data || [];
+      const holidayData = response.data.holiday || null;
+      
+      // 設置假日信息
+      setHolidayInfo(holidayData);
+      
+      // 如果有假日設置，檢查是否為完全休息日
+      if (holidayData) {
+        const restrictedSlots = holidayData.time_slots || [];
+        if (restrictedSlots.length === 0) {
+          // 如果沒有指定限制時段，表示整個日期都休息
+          setAvailableSlots([]);
+          setBookedSlots({});
+          return;
+        }
+      }
       
       // 從事件中提取已預約的時段和計數
       const slotCounts = {};
@@ -126,10 +146,15 @@ const ReservationForm = () => {
       });
       
       // 過濾出可用時段（最多同時段接上限兩組）
-      const available = timeSlotsForDate.filter(slot => {
+      let available = timeSlotsForDate.filter(slot => {
         const count = slotCounts[slot] || 0;
         return count < 2; // 最多兩組
       });
+      
+      // 如果有假日限制時段，進一步過濾
+      if (holidayData && holidayData.time_slots && holidayData.time_slots.length > 0) {
+        available = available.filter(slot => !holidayData.time_slots.includes(slot));
+      }
       
       setAvailableSlots(available);
       setBookedSlots(slotCounts);
@@ -146,6 +171,7 @@ const ReservationForm = () => {
         setAvailableSlots([]);
       }
       setBookedSlots({});
+      setHolidayInfo(null);
     }
   }, []);
 
@@ -377,6 +403,13 @@ const ReservationForm = () => {
                         <p>週日暫停營業，請選擇其他日期</p>
                       </div>
                     </div>
+                  ) : holidayInfo ? (
+                    <div className="closed-message">
+                      <div className="alert alert-warning">
+                        <strong>🏖️ 該日期為假日：{holidayInfo.description}</strong>
+                        <p>暫停營業，請選擇其他日期</p>
+                      </div>
+                    </div>
                   ) : (
                     <div>
                       {businessHoursForDate && (
@@ -388,6 +421,11 @@ const ReservationForm = () => {
                             {selectedDate && new Date(selectedDate).getDay() === 6 && (
                               <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
                                 <br />（週六只營業到中午）
+                              </span>
+                            )}
+                            {holidayInfo && holidayInfo.time_slots && holidayInfo.time_slots.length > 0 && (
+                              <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
+                                <br />🚫 假日限制時段：{holidayInfo.time_slots.join(', ')}
                               </span>
                             )}
                           </small>
