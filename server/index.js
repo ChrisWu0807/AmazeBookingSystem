@@ -366,22 +366,51 @@ app.get('/api/reservations/date/:date', async (req, res) => {
     const dayReservations = await calendarServiceForDate.getEventsByDate(date);
     
     // 查找假日事件
-    const holidayEvent = dayReservations.find(event => {
+    const holidayEvents = dayReservations.filter(event => {
       const title = event.summary?.toLowerCase() || '';
       const keywords = ['假日', '休息', '暫停', 'holiday', 'closed', 'break'];
       return keywords.some(keyword => title.includes(keyword));
     });
 
+    // 處理假日信息
+    let holidayInfo = null;
+    if (holidayEvents.length > 0) {
+      // 檢查是否為完全休息日（有date格式的事件）
+      const fullDayHoliday = holidayEvents.find(event => event.start && !event.start.includes('T'));
+      
+      if (fullDayHoliday) {
+        // 完全休息日
+        holidayInfo = {
+          id: fullDayHoliday.id,
+          date: date,
+          description: fullDayHoliday.summary,
+          time_slots: []
+        };
+      } else {
+        // 部分時段限制 - 收集所有限制時段
+        const restrictedSlots = [];
+        holidayEvents.forEach(event => {
+          if (event.start && event.start.includes('T')) {
+            const startTime = new Date(event.start);
+            const timeSlot = startTime.toTimeString().slice(0, 5);
+            restrictedSlots.push(timeSlot);
+          }
+        });
+        
+        holidayInfo = {
+          id: holidayEvents[0].id,
+          date: date,
+          description: holidayEvents[0].summary,
+          time_slots: restrictedSlots
+        };
+      }
+    }
+
     // 如果有假日設置，添加假日信息到響應中
     const response = {
       success: true,
       data: dayReservations,
-      holiday: holidayEvent ? {
-        id: holidayEvent.id,
-        date: date,
-        description: holidayEvent.summary,
-        time_slots: holidayEvent.description ? JSON.parse(holidayEvent.description) : []
-      } : null
+      holiday: holidayInfo
     };
 
     res.json(response);

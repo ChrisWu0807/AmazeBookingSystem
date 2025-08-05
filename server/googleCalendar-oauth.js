@@ -101,20 +101,39 @@ class GoogleCalendarService {
     
     if (isHolidayEvent) {
       // 假日事件
-      event = {
-        summary: reservation.summary || reservation.description,
-        description: reservation.description || '',
-        start: {
-          date: reservation.date,
-          timeZone: 'Asia/Taipei',
-        },
-        end: {
-          date: reservation.date,
-          timeZone: 'Asia/Taipei',
-        },
-        colorId: '4', // 紅色，表示假日
-        transparency: 'opaque'
-      };
+      if (reservation.time) {
+        // 部分時段限制的假日事件
+        event = {
+          summary: reservation.summary || reservation.description,
+          description: reservation.description || '',
+          start: {
+            dateTime: `${reservation.date}T${reservation.time}:00+08:00`,
+            timeZone: 'Asia/Taipei',
+          },
+          end: {
+            dateTime: `${reservation.date}T${this.getEndTime(reservation.time)}:00+08:00`,
+            timeZone: 'Asia/Taipei',
+          },
+          colorId: '4', // 紅色，表示假日
+          transparency: 'opaque'
+        };
+      } else {
+        // 完全休息日的假日事件
+        event = {
+          summary: reservation.summary || reservation.description,
+          description: reservation.description || '',
+          start: {
+            date: reservation.date,
+            timeZone: 'Asia/Taipei',
+          },
+          end: {
+            date: reservation.date,
+            timeZone: 'Asia/Taipei',
+          },
+          colorId: '4', // 紅色，表示假日
+          transparency: 'opaque'
+        };
+      }
     } else {
       // 預約事件
       event = {

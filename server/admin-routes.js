@@ -286,20 +286,40 @@ router.post('/holidays', async (req, res) => {
     
     // 為每個日期創建假日事件
     for (const date of dates) {
-      const holidayData = {
-        date: date,
-        summary: description,
-        description: JSON.stringify(time_slots) // 將限制時段存儲在描述中
-        // 沒有time字段，會被識別為假日事件
-      };
-      
-      const createdEvent = await calendarService.createEvent(holidayData);
-      createdEvents.push({
-        id: createdEvent.id,
-        date,
-        description,
-        time_slots
-      });
+      if (time_slots.length === 0) {
+        // 完全休息日 - 創建全天假日事件
+        const holidayData = {
+          date: date,
+          summary: description,
+          description: '' // 完全休息日
+        };
+        
+        const createdEvent = await calendarService.createEvent(holidayData);
+        createdEvents.push({
+          id: createdEvent.id,
+          date,
+          description,
+          time_slots: []
+        });
+      } else {
+        // 部分時段限制 - 為每個限制時段創建單獨的事件
+        for (const timeSlot of time_slots) {
+          const holidayData = {
+            date: date,
+            time: timeSlot, // 設置具體時段
+            summary: description,
+            description: `限制時段：${timeSlot}`
+          };
+          
+          const createdEvent = await calendarService.createEvent(holidayData);
+          createdEvents.push({
+            id: createdEvent.id,
+            date,
+            description,
+            time_slots: [timeSlot]
+          });
+        }
+      }
     }
     
     res.json({
