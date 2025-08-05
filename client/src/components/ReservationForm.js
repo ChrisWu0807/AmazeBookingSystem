@@ -4,8 +4,8 @@ import { UserPlus, Phone, Calendar, Clock, FileText, CheckCircle } from 'lucide-
 
 // 時間段設置：從10:00開始，每30分鐘一個時段，最晚19:30
 const timeSlots = [
-  '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
-  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', 
+  '10:00', '10:30', '11:00', '11:30', '12:00', 
+  '14:00', '14:30', '15:00', '15:30', 
   '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', 
   '19:00', '19:30'
 ];
@@ -330,7 +330,7 @@ const ReservationForm = () => {
                 onChange={handleInputChange}
                 className="form-input"
                 rows="3"
-                placeholder="請輸入備註資訊（選填）"
+                placeholder="主題，活動日期，特殊需求"
               />
             </div>
 
