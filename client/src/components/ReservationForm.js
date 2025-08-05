@@ -2,13 +2,54 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { UserPlus, Phone, Calendar, Clock, FileText, CheckCircle } from 'lucide-react';
 
-// 時間段設置：從10:00開始，每30分鐘一個時段，最晚19:30
-const timeSlots = [
-  '10:00', '10:30', '11:00', '11:30', '12:00', 
-  '14:00', '14:30', '15:00', '15:30', 
-  '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', 
-  '19:00', '19:30'
-];
+// 營業時間配置
+const businessHours = {
+  // 週一到週五：10:00-19:30
+  monday: { start: '10:00', end: '19:30', closed: false },
+  tuesday: { start: '10:00', end: '19:30', closed: false },
+  wednesday: { start: '10:00', end: '19:30', closed: false },
+  thursday: { start: '10:00', end: '19:30', closed: false },
+  friday: { start: '10:00', end: '19:30', closed: false },
+  // 週六：10:00-12:00（只營業到中午）
+  saturday: { start: '10:00', end: '12:00', closed: false },
+  // 週日：公休
+  sunday: { start: '10:00', end: '19:30', closed: true }
+};
+
+// 生成時間段函數
+const generateTimeSlots = (startTime, endTime) => {
+  const slots = [];
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  
+  let currentHour = startHour;
+  let currentMinute = startMinute;
+  
+  while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+    const timeSlot = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+    slots.push(timeSlot);
+    
+    // 增加30分鐘
+    currentMinute += 30;
+    if (currentMinute >= 60) {
+      currentMinute = 0;
+      currentHour += 1;
+    }
+  }
+  
+  return slots;
+};
+
+// 獲取指定日期的營業時間
+const getBusinessHoursForDate = (dateString) => {
+  const date = new Date(dateString);
+  const dayOfWeek = date.getDay(); // 0=週日, 1=週一, ..., 6=週六
+  
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayName = dayNames[dayOfWeek];
+  
+  return businessHours[dayName];
+};
 
 const ReservationForm = () => {
   const [formData, setFormData] = useState({
@@ -28,17 +69,43 @@ const ReservationForm = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState({});
+  const [businessHoursForDate, setBusinessHoursForDate] = useState(null);
+  const [isDateClosed, setIsDateClosed] = useState(false);
 
   // 當日期改變時，獲取該日期的可用時段
   useEffect(() => {
     if (selectedDate) {
-      fetchAvailableSlots(selectedDate);
+      // 檢查營業時間
+      const hours = getBusinessHoursForDate(selectedDate);
+      setBusinessHoursForDate(hours);
+      setIsDateClosed(hours.closed);
+      
+      if (!hours.closed) {
+        fetchAvailableSlots(selectedDate);
+      } else {
+        setAvailableSlots([]);
+        setBookedSlots({});
+      }
     }
   }, [selectedDate]);
 
   const fetchAvailableSlots = useCallback(async (date) => {
     try {
       setError(null);
+      
+      // 獲取該日期的營業時間
+      const hours = getBusinessHoursForDate(date);
+      
+      // 如果該日期公休，直接返回
+      if (hours.closed) {
+        setAvailableSlots([]);
+        setBookedSlots({});
+        return;
+      }
+      
+      // 根據營業時間生成時段
+      const timeSlotsForDate = generateTimeSlots(hours.start, hours.end);
+      
       // 獲取該日期的所有 Google Calendar 事件
       const response = await api.get(`/reservations/date/${date}`);
       const calendarEvents = response.data.data || [];
@@ -52,7 +119,7 @@ const ReservationForm = () => {
       });
       
       // 過濾出可用時段（最多同時段接上限兩組）
-      const available = timeSlots.filter(slot => {
+      const available = timeSlotsForDate.filter(slot => {
         const count = slotCounts[slot] || 0;
         return count < 2; // 最多兩組
       });
@@ -62,7 +129,15 @@ const ReservationForm = () => {
     } catch (error) {
       console.error('獲取可用時段失敗:', error);
       setError('無法獲取可用時段，請稍後再試');
-      setAvailableSlots(timeSlots); // 如果API失敗，顯示所有時段
+      
+      // 如果API失敗，根據營業時間顯示時段
+      const hours = getBusinessHoursForDate(date);
+      if (!hours.closed) {
+        const timeSlotsForDate = generateTimeSlots(hours.start, hours.end);
+        setAvailableSlots(timeSlotsForDate);
+      } else {
+        setAvailableSlots([]);
+      }
       setBookedSlots({});
     }
   }, []);
@@ -288,29 +363,52 @@ const ReservationForm = () => {
               </label>
               <div className="time-slots-container">
                 {selectedDate ? (
-                  <div className="time-slots-grid">
-                    {timeSlots.map(slot => {
-                      const slotStyle = getTimeSlotStyle(slot);
-                      const isAvailable = availableSlots.includes(slot);
-                      const count = bookedSlots[slot] || 0;
-                      
-                      return (
-                        <button
-                          key={slot}
-                          type="button"
-                          className={`time-slot-btn ${slotStyle} ${formData.time === slot ? 'selected' : ''}`}
-                          onClick={() => isAvailable && handleTimeSlotClick(slot)}
-                          disabled={!isAvailable}
-                          title={count > 0 ? `已預約 ${count}/2 組` : '可預約'}
-                        >
-                          <div className="time-slot-text">{getTimeSlotText(slot)}</div>
-                          {count > 0 && (
-                            <div className="booking-count">({count}/2)</div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  isDateClosed ? (
+                    <div className="closed-message">
+                      <div className="alert alert-warning">
+                        <strong>🏖️ 該日期為公休日</strong>
+                        <p>週日暫停營業，請選擇其他日期</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      {businessHoursForDate && (
+                        <div className="business-hours-info">
+                          <small>
+                            📅 營業時間：{businessHoursForDate.start} - {businessHoursForDate.end}
+                            {selectedDate && new Date(selectedDate).getDay() === 6 && (
+                              <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
+                                （週六只營業到中午）
+                              </span>
+                            )}
+                          </small>
+                        </div>
+                      )}
+                      <div className="time-slots-grid">
+                        {availableSlots.map(slot => {
+                          const slotStyle = getTimeSlotStyle(slot);
+                          const isAvailable = availableSlots.includes(slot);
+                          const count = bookedSlots[slot] || 0;
+                          
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              className={`time-slot-btn ${slotStyle} ${formData.time === slot ? 'selected' : ''}`}
+                              onClick={() => isAvailable && handleTimeSlotClick(slot)}
+                              disabled={!isAvailable}
+                              title={count > 0 ? `已預約 ${count}/2 組` : '可預約'}
+                            >
+                              <div className="time-slot-text">{getTimeSlotText(slot)}</div>
+                              {count > 0 && (
+                                <div className="booking-count">({count}/2)</div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )
                 ) : (
                   <div className="select-date-message">
                     請先選擇預約日期
