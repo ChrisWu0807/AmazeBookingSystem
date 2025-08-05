@@ -311,6 +311,11 @@ app.get('/api/health', (req, res) => {
 // 提供靜態文件服務
 app.use(express.static(path.join(__dirname, "../client/build")));
 
+// OAuth 授權頁面
+app.get("/auth", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/auth.html"));
+});
+
 // 處理前端路由 - 所有非 API 路徑都返回前端應用
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/build/index.html"));
