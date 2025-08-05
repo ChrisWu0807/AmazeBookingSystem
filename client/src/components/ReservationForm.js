@@ -2,6 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { UserPlus, Phone, Calendar, Clock, FileText, CheckCircle } from 'lucide-react';
 
+// 時間段設置：從10:00開始，每30分鐘一個時段，最晚20:30
+const timeSlots = [
+  '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
+  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', 
+  '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', 
+  '19:00', '19:30', '20:00', '20:30'
+];
+
 const ReservationForm = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -16,24 +24,18 @@ const ReservationForm = () => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [bookedSlots, setBookedSlots] = useState({});
   const [selectedDate, setSelectedDate] = useState('');
-
-  // 新的時間段設置：從10:00開始，每30分鐘一個時段，最晚20:30
-  const timeSlots = [
-    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
-    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', 
-    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', 
-    '19:00', '19:30', '20:00', '20:30'
-  ];
+  const [error, setError] = useState(null);
 
   // 當日期改變時，獲取該日期的可用時段
   useEffect(() => {
     if (selectedDate) {
       fetchAvailableSlots(selectedDate);
     }
-  }, [selectedDate, fetchAvailableSlots]);
+  }, [selectedDate]);
 
   const fetchAvailableSlots = useCallback(async (date) => {
     try {
+      setError(null);
       // 獲取該日期的所有 Google Calendar 事件
       const response = await api.get(`/reservations/date/${date}`);
       const calendarEvents = response.data.data || [];
@@ -56,10 +58,11 @@ const ReservationForm = () => {
       setBookedSlots(slotCounts);
     } catch (error) {
       console.error('獲取可用時段失敗:', error);
+      setError('無法獲取可用時段，請稍後再試');
       setAvailableSlots(timeSlots); // 如果API失敗，顯示所有時段
       setBookedSlots({});
     }
-  }, [timeSlots]);
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -87,31 +90,41 @@ const ReservationForm = () => {
 
   // 獲取時段顯示文字
   const getTimeSlotText = (time) => {
-    const [hour, minute] = time.split(':');
-    const currentHour = parseInt(hour);
-    
-    // 計算結束時間（1小時後）
-    let endHour = currentHour + 1;
-    
-    // 處理跨日的情況
-    if (endHour >= 24) {
-      endHour = 0;
+    try {
+      const [hour, minute] = time.split(':');
+      const currentHour = parseInt(hour);
+      
+      // 計算結束時間（1小時後）
+      let endHour = currentHour + 1;
+      
+      // 處理跨日的情況
+      if (endHour >= 24) {
+        endHour = 0;
+      }
+      
+      const endTime = `${endHour.toString().padStart(2, '0')}:${minute}`;
+      return `${time} - ${endTime}`;
+    } catch (error) {
+      console.error('時間格式錯誤:', error);
+      return `${time} - 錯誤`;
     }
-    
-    const endTime = `${endHour.toString().padStart(2, '0')}:${minute}`;
-    return `${time} - ${endTime}`;
   };
 
   // 獲取時段狀態樣式
   const getTimeSlotStyle = (time) => {
-    const count = bookedSlots[time] || 0;
-    
-    if (count >= 2) {
-      return 'booked'; // 已滿
-    } else if (count === 1) {
-      return 'partially-booked'; // 部分預約
-    } else {
-      return 'available'; // 可用
+    try {
+      const count = bookedSlots[time] || 0;
+      
+      if (count >= 2) {
+        return 'booked'; // 已滿
+      } else if (count === 1) {
+        return 'partially-booked'; // 部分預約
+      } else {
+        return 'available'; // 可用
+      }
+    } catch (error) {
+      console.error('獲取時段樣式錯誤:', error);
+      return 'available';
     }
   };
 
@@ -119,6 +132,7 @@ const ReservationForm = () => {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: '', text: '' });
+    setError(null);
 
     try {
       const response = await api.post('/reservations', {
@@ -142,10 +156,36 @@ const ReservationForm = () => {
     } catch (error) {
       const errorMessage = error.response?.data?.message || '預約失敗，請稍後再試';
       setMessage({ type: 'error', text: errorMessage });
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  // 如果出現錯誤，顯示錯誤信息
+  if (error) {
+    return (
+      <div className="main-content">
+        <h1 className="page-title">
+          <UserPlus size={32} style={{ marginRight: '12px', verticalAlign: 'middle' }} />
+          線上預約系統
+        </h1>
+        <div className="form-container">
+          <div className="card">
+            <div className="alert alert-error">
+              {error}
+              <button 
+                onClick={() => setError(null)}
+                style={{ marginLeft: '10px', padding: '5px 10px' }}
+              >
+                重試
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="main-content">
