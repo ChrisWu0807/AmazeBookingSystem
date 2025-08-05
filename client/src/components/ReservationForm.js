@@ -27,7 +27,14 @@ const generateTimeSlots = (startTime, endTime) => {
   
   while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
     const timeSlot = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
-    slots.push(timeSlot);
+    
+    // 排除午休時段（12:30-14:00）
+    const isLunchBreak = (currentHour === 12 && currentMinute >= 30) || 
+                         (currentHour === 13 && currentMinute < 30);
+    
+    if (!isLunchBreak) {
+      slots.push(timeSlot);
+    }
     
     // 增加30分鐘
     currentMinute += 30;
@@ -376,9 +383,11 @@ const ReservationForm = () => {
                         <div className="business-hours-info">
                           <small>
                             📅 營業時間：{businessHoursForDate.start} - {businessHoursForDate.end}
+                            <br />
+                            🍽️ 13:00-14:00 午休時間
                             {selectedDate && new Date(selectedDate).getDay() === 6 && (
                               <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
-                                （週六只營業到中午）
+                                <br />（週六只營業到中午）
                               </span>
                             )}
                           </small>
