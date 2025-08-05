@@ -13,7 +13,6 @@ yarn-error.log*
 
 # Google OAuth tokens
 server/tokens.json
-server/service-account-key.json
 
 # Database
 server/amaze_booking.db
