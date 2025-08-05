@@ -272,23 +272,15 @@ router.post('/holidays', async (req, res) => {
     
     const calendarService = new GoogleCalendarService();
     
-    // 創建假日事件
-    const event = {
+    // 創建假日數據對象（符合createEvent方法期望的格式）
+    const holidayData = {
+      date: date,
       summary: description,
-      description: JSON.stringify(time_slots), // 將限制時段存儲在描述中
-      start: {
-        date: date,
-        timeZone: 'Asia/Taipei'
-      },
-      end: {
-        date: date,
-        timeZone: 'Asia/Taipei'
-      },
-      colorId: '4', // 紅色，表示假日
-      transparency: 'opaque'
+      description: JSON.stringify(time_slots) // 將限制時段存儲在描述中
+      // 沒有time字段，會被識別為假日事件
     };
     
-    const createdEvent = await calendarService.createEvent(event);
+    const createdEvent = await calendarService.createEvent(holidayData);
     
     res.json({
       success: true,
