@@ -66,8 +66,7 @@ app.post('/api/reservations', async (req, res) => {
     }
 
     // 檢查時段是否已被預約
-    const calendarService = new GoogleCalendarService();
-    const hasConflict = await calendarService.checkTimeSlotConflict(date, time);
+    const hasConflict = await db.checkTimeSlotConflict(date, time);
     
     if (hasConflict) {
       return res.status(409).json({
@@ -268,8 +267,7 @@ app.get('/api/reservations/date/:date', async (req, res) => {
       });
     }
 
-    const calendarService = new GoogleCalendarService();
-      const dayReservations = await calendarService.getEventsByDate(date);
+    const dayReservations = await db.getReservationsByDate(date);
 
     res.json({
       success: true,

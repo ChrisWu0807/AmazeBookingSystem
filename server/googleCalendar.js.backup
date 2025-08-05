@@ -59,24 +59,6 @@ class GoogleCalendarService {
   }
 
   async getEventsByDate(date) {
-
-  async checkTimeSlotConflict(date, time) {
-    try {
-      const events = await this.getEventsByDate(date);
-      const targetTime = `${date}T${time}:00+08:00`;
-      
-      // 檢查是否有相同時段的預約
-      return events.some(event => {
-        const eventStart = new Date(event.start);
-        const targetStart = new Date(targetTime);
-        return eventStart.getTime() === targetStart.getTime();
-      });
-    } catch (error) {
-      console.error("❌ 檢查時段衝突失敗:", error);
-      // 如果無法連接到 Google Calendar，返回 false（允許預約）
-      return false;
-    }
-  }
     try {
       const startOfDay = `${date}T00:00:00+08:00`;
       const endOfDay = `${date}T23:59:59+08:00`;
