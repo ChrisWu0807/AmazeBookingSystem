@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const DatabaseService = require('./database');
 const GoogleCalendarService = require('./googleCalendar-oauth');
 const moment = require('moment');
 
@@ -22,57 +21,65 @@ const authenticateAdmin = (req, res, next) => {
 // 所有管理員路由都需要認證
 router.use(authenticateAdmin);
 
-// 1. 獲取所有預約
+// 1. 獲取所有預約（從Google Calendar）
 router.get('/reservations', async (req, res) => {
   try {
-    const db = new DatabaseService();
-    await db.connect();
-    
     const { page = 1, limit = 20, status, date } = req.query;
+    
+    const calendarService = new GoogleCalendarService();
+    
+    // 獲取未來30天的所有事件
+    const startDate = moment().format('YYYY-MM-DD');
+    const endDate = moment().add(30, 'days').format('YYYY-MM-DD');
+    
+    const events = await calendarService.getEventsByDateRange(startDate, endDate);
+    
+    // 過濾出預約事件（標題包含"客戶預約"）
+    const reservations = events
+      .filter(event => event.summary && event.summary.includes('客戶預約'))
+      .map(event => {
+        const startTime = new Date(event.start.dateTime || event.start.date);
+        const endTime = new Date(event.end.dateTime || event.end.date);
+        
+        // 從描述中提取客戶信息
+        const description = event.description || '';
+        const nameMatch = description.match(/姓名[：:]\s*([^\n]+)/);
+        const phoneMatch = description.match(/電話[：:]\s*([^\n]+)/);
+        const noteMatch = description.match(/備註[：:]\s*([^\n]+)/);
+        
+        return {
+          id: event.id,
+          name: nameMatch ? nameMatch[1].trim() : '未知',
+          phone: phoneMatch ? phoneMatch[1].trim() : '未知',
+          date: startTime.toISOString().split('T')[0],
+          time: startTime.toTimeString().slice(0, 5),
+          note: noteMatch ? noteMatch[1].trim() : '',
+          check_status: '已確認', // Google Calendar中的預約都視為已確認
+          created_at: startTime.toISOString(),
+          google_event_id: event.id
+        };
+      });
+    
+    // 應用篩選
+    let filteredReservations = reservations;
+    
+    if (status) {
+      filteredReservations = filteredReservations.filter(r => r.check_status === status);
+    }
+    
+    if (date) {
+      filteredReservations = filteredReservations.filter(r => r.date === date);
+    }
+    
+    // 應用分頁
+    const total = filteredReservations.length;
     const offset = (page - 1) * limit;
-    
-    let sql = `
-      SELECT * FROM reservations 
-      WHERE 1=1
-    `;
-    const params = [];
-    
-    if (status) {
-      sql += ` AND check_status = ?`;
-      params.push(status);
-    }
-    
-    if (date) {
-      sql += ` AND date = ?`;
-      params.push(date);
-    }
-    
-    sql += ` ORDER BY date DESC, time ASC LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), offset);
-    
-    const reservations = await db.all(sql, params);
-    
-    // 獲取總數
-    let countSql = `SELECT COUNT(*) as total FROM reservations WHERE 1=1`;
-    const countParams = [];
-    
-    if (status) {
-      countSql += ` AND check_status = ?`;
-      countParams.push(status);
-    }
-    
-    if (date) {
-      countSql += ` AND date = ?`;
-      countParams.push(date);
-    }
-    
-    const totalResult = await db.get(countSql, countParams);
-    const total = totalResult.total;
+    const paginatedReservations = filteredReservations.slice(offset, offset + parseInt(limit));
     
     res.json({
       success: true,
       data: {
-        reservations,
+        reservations: paginatedReservations,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -91,7 +98,7 @@ router.get('/reservations', async (req, res) => {
   }
 });
 
-// 2. 更新預約狀態
+// 2. 更新預約狀態（刪除並重新創建事件）
 router.put('/reservations/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
@@ -104,18 +111,22 @@ router.put('/reservations/:id/status', async (req, res) => {
       });
     }
     
-    const db = new DatabaseService();
-    await db.connect();
+    const calendarService = new GoogleCalendarService();
     
-    await db.run(
-      'UPDATE reservations SET check_status = ? WHERE id = ?',
-      [status, id]
-    );
-    
-    res.json({
-      success: true,
-      message: '預約狀態更新成功'
-    });
+    if (status === '已取消') {
+      // 刪除事件
+      await calendarService.deleteEvent(id);
+      res.json({
+        success: true,
+        message: '預約已取消'
+      });
+    } else {
+      // 對於其他狀態，我們保持事件不變（因為Google Calendar中都是已確認的）
+      res.json({
+        success: true,
+        message: '預約狀態更新成功'
+      });
+    }
   } catch (error) {
     console.error('更新預約狀態失敗:', error);
     res.status(500).json({
@@ -131,31 +142,8 @@ router.delete('/reservations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const db = new DatabaseService();
-    await db.connect();
-    
-    // 先獲取預約信息
-    const reservation = await db.get('SELECT * FROM reservations WHERE id = ?', [id]);
-    
-    if (!reservation) {
-      return res.status(404).json({
-        success: false,
-        message: '預約不存在'
-      });
-    }
-    
-    // 刪除預約
-    await db.run('DELETE FROM reservations WHERE id = ?', [id]);
-    
-    // 如果預約已同步到Google Calendar，也刪除日曆事件
-    if (reservation.google_event_id) {
-      try {
-        const calendarService = new GoogleCalendarService();
-        await calendarService.deleteEvent(reservation.google_event_id);
-      } catch (calendarError) {
-        console.error('刪除Google Calendar事件失敗:', calendarError);
-      }
-    }
+    const calendarService = new GoogleCalendarService();
+    await calendarService.deleteEvent(id);
     
     res.json({
       success: true,
@@ -183,25 +171,43 @@ router.get('/time-slots/stats', async (req, res) => {
       });
     }
     
-    const db = new DatabaseService();
-    await db.connect();
+    const calendarService = new GoogleCalendarService();
+    const events = await calendarService.getEventsByDate(date);
     
-    const sql = `
-      SELECT time, COUNT(*) as count, 
-             SUM(CASE WHEN check_status = '已確認' THEN 1 ELSE 0 END) as confirmed_count,
-             SUM(CASE WHEN check_status = '未確認' THEN 1 ELSE 0 END) as pending_count,
-             SUM(CASE WHEN check_status = '已取消' THEN 1 ELSE 0 END) as cancelled_count
-      FROM reservations 
-      WHERE date = ?
-      GROUP BY time
-      ORDER BY time
-    `;
+    // 統計每個時段的預約數量
+    const slotStats = {};
+    const timeSlots = [
+      '10:00', '10:30', '11:00', '11:30', '12:00', 
+      '14:00', '14:30', '15:00', '15:30', 
+      '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', 
+      '19:00', '19:30'
+    ];
     
-    const stats = await db.all(sql, [date]);
+    timeSlots.forEach(slot => {
+      slotStats[slot] = {
+        time: slot,
+        count: 0,
+        confirmed_count: 0,
+        pending_count: 0,
+        cancelled_count: 0
+      };
+    });
+    
+    events.forEach(event => {
+      if (event.summary && event.summary.includes('客戶預約')) {
+        const startTime = new Date(event.start.dateTime || event.start.date);
+        const timeSlot = startTime.toTimeString().slice(0, 5);
+        
+        if (slotStats[timeSlot]) {
+          slotStats[timeSlot].count++;
+          slotStats[timeSlot].confirmed_count++; // Google Calendar中的都是已確認
+        }
+      }
+    });
     
     res.json({
       success: true,
-      data: stats
+      data: Object.values(slotStats)
     });
   } catch (error) {
     console.error('獲取時段統計失敗:', error);
@@ -329,34 +335,47 @@ router.delete('/holidays/:eventId', async (req, res) => {
 // 8. 獲取系統統計
 router.get('/stats', async (req, res) => {
   try {
-    const db = new DatabaseService();
-    await db.connect();
+    const calendarService = new GoogleCalendarService();
     
-    // 今日預約數
+    // 獲取今日和本週的事件
     const today = moment().format('YYYY-MM-DD');
-    const todayStats = await db.get(`
-      SELECT COUNT(*) as total,
-             SUM(CASE WHEN check_status = '已確認' THEN 1 ELSE 0 END) as confirmed,
-             SUM(CASE WHEN check_status = '未確認' THEN 1 ELSE 0 END) as pending,
-             SUM(CASE WHEN check_status = '已取消' THEN 1 ELSE 0 END) as cancelled
-      FROM reservations 
-      WHERE date = ?
-    `, [today]);
-    
-    // 本週預約數
     const weekStart = moment().startOf('week').format('YYYY-MM-DD');
     const weekEnd = moment().endOf('week').format('YYYY-MM-DD');
-    const weekStats = await db.get(`
-      SELECT COUNT(*) as total
-      FROM reservations 
-      WHERE date BETWEEN ? AND ?
-    `, [weekStart, weekEnd]);
     
-    // 總預約數
-    const totalStats = await db.get(`
-      SELECT COUNT(*) as total
-      FROM reservations
-    `);
+    const todayEvents = await calendarService.getEventsByDate(today);
+    const weekEvents = await calendarService.getEventsByDateRange(weekStart, weekEnd);
+    
+    // 過濾出預約事件
+    const todayReservations = todayEvents.filter(event => 
+      event.summary && event.summary.includes('客戶預約')
+    );
+    
+    const weekReservations = weekEvents.filter(event => 
+      event.summary && event.summary.includes('客戶預約')
+    );
+    
+    // 統計數據
+    const todayStats = {
+      total: todayReservations.length,
+      confirmed: todayReservations.length,
+      pending: 0,
+      cancelled: 0
+    };
+    
+    const weekStats = {
+      total: weekReservations.length
+    };
+    
+    // 總預約數（過去30天）
+    const thirtyDaysAgo = moment().subtract(30, 'days').format('YYYY-MM-DD');
+    const allEvents = await calendarService.getEventsByDateRange(thirtyDaysAgo, moment().add(30, 'days').format('YYYY-MM-DD'));
+    const allReservations = allEvents.filter(event => 
+      event.summary && event.summary.includes('客戶預約')
+    );
+    
+    const totalStats = {
+      total: allReservations.length
+    };
     
     res.json({
       success: true,

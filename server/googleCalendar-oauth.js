@@ -94,31 +94,55 @@ class GoogleCalendarService {
       throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
     }
 
-    const event = {
-      summary: `📅 客戶預約 - ${reservation.name}`,
-      description: `
+    // 檢查是否是假日事件（沒有time字段）
+    const isHolidayEvent = !reservation.time;
+    
+    let event;
+    
+    if (isHolidayEvent) {
+      // 假日事件
+      event = {
+        summary: reservation.summary || reservation.description,
+        description: reservation.description || '',
+        start: {
+          date: reservation.date,
+          timeZone: 'Asia/Taipei',
+        },
+        end: {
+          date: reservation.date,
+          timeZone: 'Asia/Taipei',
+        },
+        colorId: '4', // 紅色，表示假日
+        transparency: 'opaque'
+      };
+    } else {
+      // 預約事件
+      event = {
+        summary: `📅 客戶預約 - ${reservation.name}`,
+        description: `
 📞 電話：${reservation.phone}
 📝 備註：${reservation.note || '無'}
 ✅ 狀態：${reservation.check}
 🕐 預約時間：${reservation.date} ${reservation.time}
-      `.trim(),
-      start: {
-        dateTime: `${reservation.date}T${reservation.time}:00+08:00`,
-        timeZone: 'Asia/Taipei',
-      },
-      end: {
-        dateTime: `${reservation.date}T${this.getEndTime(reservation.time)}:00+08:00`,
-        timeZone: 'Asia/Taipei',
-      },
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 24 * 60 }, // 1天前
-          { method: 'popup', minutes: 30 }, // 30分鐘前
-        ],
-      },
-      colorId: '1', // 藍色
-    };
+        `.trim(),
+        start: {
+          dateTime: `${reservation.date}T${reservation.time}:00+08:00`,
+          timeZone: 'Asia/Taipei',
+        },
+        end: {
+          dateTime: `${reservation.date}T${this.getEndTime(reservation.time)}:00+08:00`,
+          timeZone: 'Asia/Taipei',
+        },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'email', minutes: 24 * 60 }, // 1天前
+            { method: 'popup', minutes: 30 }, // 30分鐘前
+          ],
+        },
+        colorId: '1', // 藍色
+      };
+    }
 
     try {
       const response = await this.calendar.events.insert({
