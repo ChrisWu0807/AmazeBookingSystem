@@ -86,23 +86,28 @@ app.post('/api/reservations', async (req, res) => {
       check
     };
 
-    await db.createReservation(newReservation);
-
-    // 同步到 Google Calendar
+    // 直接同步到 Google Calendar
     try {
       const calendarService = new GoogleCalendarService();
-      await calendarService.createEvent(newReservation);
+      const calendarEvent = await calendarService.createEvent(newReservation);
       console.log('✅ 預約已同步到 Google Calendar');
+      
+      res.status(201).json({
+        success: true,
+        data: {
+          ...newReservation,
+          calendarEventId: calendarEvent.id,
+          calendarUrl: calendarEvent.htmlLink
+        },
+        message: '預約已成功同步到 Google Calendar'
+      });
     } catch (calendarError) {
       console.error('❌ Google Calendar 同步失敗:', calendarError);
-      // 不影響預約建立，只記錄錯誤
+      res.status(500).json({
+        success: false,
+        message: 'Google Calendar 同步失敗，請稍後再試'
+      });
     }
-
-    res.status(201).json({
-      success: true,
-      data: newReservation,
-      message: '預約新增成功'
-    });
 
   } catch (error) {
     console.error('新增預約錯誤:', error);
