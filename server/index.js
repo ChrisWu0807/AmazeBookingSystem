@@ -316,8 +316,12 @@ app.get("/auth", (req, res) => {
   res.sendFile(path.join(__dirname, "public/auth.html"));
 });
 
-// 處理前端路由 - 所有非 API 路徑都返回前端應用
+// 處理前端路由 - 所有非 API 路徑都返回前端應用（排除 /auth/callback）
 app.get("*", (req, res) => {
+  // 排除 API 路由和授權回調
+  if (req.path.startsWith('/api/') || req.path === '/auth/callback') {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
   res.sendFile(path.join(__dirname, "../client/build/index.html"));
 });
 async function startServer() {
