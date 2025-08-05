@@ -39,10 +39,16 @@ const AdminDashboard = () => {
 
   // 新增假日狀態
   const [newHoliday, setNewHoliday] = useState({
-    date: '',
+    start_date: '',
+    end_date: '',
     description: '',
     time_slots: []
   });
+
+  // 時段限制狀態
+  const [timeRestrictions, setTimeRestrictions] = useState([
+    { start_time: '', end_time: '' }
+  ]);
 
   // 管理員token（實際應用中應該從登入獲取）
   const adminToken = 'amaze-admin-2024';
@@ -144,13 +150,25 @@ const AdminDashboard = () => {
   // 新增假日
   const addHoliday = async () => {
     try {
-      const response = await api.post('/admin/holidays', newHoliday, {
+      // 生成時段列表
+      const timeSlots = generateTimeSlots();
+      
+      // 準備假日數據
+      const holidayData = {
+        start_date: newHoliday.start_date,
+        end_date: newHoliday.end_date || newHoliday.start_date, // 如果沒有結束日期，使用開始日期
+        description: newHoliday.description,
+        time_slots: timeSlots
+      };
+
+      const response = await api.post('/admin/holidays', holidayData, {
         headers: { 'admin-token': adminToken }
       });
 
       if (response.data.success) {
         setMessage({ type: 'success', text: '假日設置成功' });
-        setNewHoliday({ date: '', description: '', time_slots: [] });
+        setNewHoliday({ start_date: '', end_date: '', description: '', time_slots: [] });
+        setTimeRestrictions([{ start_time: '', end_time: '' }]);
         fetchHolidays();
       }
     } catch (error) {
@@ -176,6 +194,53 @@ const AdminDashboard = () => {
       console.error('刪除假日失敗:', error);
       setMessage({ type: 'error', text: '刪除假日失敗' });
     }
+  };
+
+  // 添加時段限制
+  const addTimeRestriction = () => {
+    setTimeRestrictions(prev => [...prev, { start_time: '', end_time: '' }]);
+  };
+
+  // 刪除時段限制
+  const removeTimeRestriction = (index) => {
+    setTimeRestrictions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // 更新時段限制
+  const updateTimeRestriction = (index, field, value) => {
+    setTimeRestrictions(prev => 
+      prev.map((restriction, i) => 
+        i === index ? { ...restriction, [field]: value } : restriction
+      )
+    );
+  };
+
+  // 生成時段列表
+  const generateTimeSlots = () => {
+    const slots = [];
+    timeRestrictions.forEach(restriction => {
+      if (restriction.start_time && restriction.end_time) {
+        // 生成從開始時間到結束時間的30分鐘間隔時段
+        const [startHour, startMinute] = restriction.start_time.split(':').map(Number);
+        const [endHour, endMinute] = restriction.end_time.split(':').map(Number);
+        
+        let currentHour = startHour;
+        let currentMinute = startMinute;
+        
+        while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+          const timeSlot = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+          slots.push(timeSlot);
+          
+          // 增加30分鐘
+          currentMinute += 30;
+          if (currentMinute >= 60) {
+            currentMinute = 0;
+            currentHour += 1;
+          }
+        }
+      }
+    });
+    return slots;
   };
 
   // 初始化
@@ -376,42 +441,88 @@ const AdminDashboard = () => {
             <h3>新增假日</h3>
             <div className="form-row">
               <div className="form-group">
-                <label>日期：</label>
+                <label>開始日期：</label>
                 <input
                   type="date"
-                  value={newHoliday.date}
-                  onChange={(e) => setNewHoliday(prev => ({ ...prev, date: e.target.value }))}
+                  value={newHoliday.start_date}
+                  onChange={(e) => setNewHoliday(prev => ({ ...prev, start_date: e.target.value }))}
                   className="form-input"
                 />
               </div>
               <div className="form-group">
-                <label>描述：</label>
+                <label>結束日期（可選）：</label>
                 <input
-                  type="text"
-                  value={newHoliday.description}
-                  onChange={(e) => setNewHoliday(prev => ({ ...prev, description: e.target.value }))}
+                  type="date"
+                  value={newHoliday.end_date}
+                  onChange={(e) => setNewHoliday(prev => ({ ...prev, end_date: e.target.value }))}
                   className="form-input"
-                  placeholder="例：春節連假"
+                  placeholder="留空表示單日假日"
                 />
               </div>
-              <div className="form-group">
-                <label>限制時段（可選）：</label>
-                <input
-                  type="text"
-                  value={newHoliday.time_slots.join(', ')}
-                  onChange={(e) => setNewHoliday(prev => ({ 
-                    ...prev, 
-                    time_slots: e.target.value.split(',').map(s => s.trim()).filter(s => s)
-                  }))}
-                  className="form-input"
-                  placeholder="例：10:00, 14:00, 15:00"
-                />
-              </div>
-              <button onClick={addHoliday} className="btn-primary">
-                <Plus size={16} />
-                新增假日
-              </button>
             </div>
+            
+            <div className="form-group">
+              <label>描述：</label>
+              <input
+                type="text"
+                value={newHoliday.description}
+                onChange={(e) => setNewHoliday(prev => ({ ...prev, description: e.target.value }))}
+                className="form-input"
+                placeholder="例：春節連假（必須包含：假日、休息、暫停、holiday、closed、break）"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>限制時段（可選）：</label>
+              <div className="time-restrictions">
+                {timeRestrictions.map((restriction, index) => (
+                  <div key={index} className="restriction-row">
+                    <input
+                      type="time"
+                      value={restriction.start_time}
+                      onChange={(e) => updateTimeRestriction(index, 'start_time', e.target.value)}
+                      className="form-input"
+                      placeholder="開始時間"
+                    />
+                    <span>到</span>
+                    <input
+                      type="time"
+                      value={restriction.end_time}
+                      onChange={(e) => updateTimeRestriction(index, 'end_time', e.target.value)}
+                      className="form-input"
+                      placeholder="結束時間"
+                    />
+                    {timeRestrictions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeTimeRestriction(index)}
+                        className="btn-delete"
+                        style={{ marginLeft: '8px' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addTimeRestriction}
+                  className="btn-secondary"
+                  style={{ marginTop: '8px' }}
+                >
+                  <Plus size={14} />
+                  添加時段限制
+                </button>
+              </div>
+              <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
+                例如：10:00-12:00 和 18:00-19:30 表示這兩個時段無法預約
+              </small>
+            </div>
+
+            <button onClick={addHoliday} className="btn-primary">
+              <Plus size={16} />
+              新增假日
+            </button>
           </div>
 
           <div className="holidays-list">

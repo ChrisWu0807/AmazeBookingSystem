@@ -807,4 +807,31 @@
 .closed-message .alert p {
   margin: 0;
   color: #856404;
+}
+
+/* 時段限制樣式 */
+.time-restrictions {
+  margin-top: 8px;
+}
+
+.restriction-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.restriction-row input[type="time"] {
+  flex: 1;
+  max-width: 120px;
+}
+
+.restriction-row span {
+  color: #666;
+  font-size: 14px;
+}
+
+.restriction-row .btn-delete {
+  padding: 4px 8px;
+  min-width: auto;
 } 

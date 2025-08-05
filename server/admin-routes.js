@@ -261,36 +261,51 @@ router.get('/holidays', async (req, res) => {
 // 6. 新增假日（創建Google Calendar事件）
 router.post('/holidays', async (req, res) => {
   try {
-    const { date, description, time_slots = [] } = req.body;
+    const { start_date, end_date, description, time_slots = [] } = req.body;
     
-    if (!date || !description) {
+    if (!start_date || !description) {
       return res.status(400).json({
         success: false,
-        message: '請提供日期和描述'
+        message: '請提供開始日期和描述'
       });
     }
     
     const calendarService = new GoogleCalendarService();
+    const endDate = end_date || start_date; // 如果沒有結束日期，使用開始日期
     
-    // 創建假日數據對象（符合createEvent方法期望的格式）
-    const holidayData = {
-      date: date,
-      summary: description,
-      description: JSON.stringify(time_slots) // 將限制時段存儲在描述中
-      // 沒有time字段，會被識別為假日事件
-    };
+    // 生成日期範圍內的所有日期
+    const start = moment(start_date);
+    const end = moment(endDate);
+    const dates = [];
     
-    const createdEvent = await calendarService.createEvent(holidayData);
+    for (let date = start.clone(); date.isSameOrBefore(end); date.add(1, 'day')) {
+      dates.push(date.format('YYYY-MM-DD'));
+    }
     
-    res.json({
-      success: true,
-      message: '假日設置成功',
-      data: {
+    const createdEvents = [];
+    
+    // 為每個日期創建假日事件
+    for (const date of dates) {
+      const holidayData = {
+        date: date,
+        summary: description,
+        description: JSON.stringify(time_slots) // 將限制時段存儲在描述中
+        // 沒有time字段，會被識別為假日事件
+      };
+      
+      const createdEvent = await calendarService.createEvent(holidayData);
+      createdEvents.push({
         id: createdEvent.id,
         date,
         description,
         time_slots
-      }
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: `假日設置成功，共創建 ${createdEvents.length} 個假日事件`,
+      data: createdEvents
     });
   } catch (error) {
     console.error('新增假日失敗:', error);
