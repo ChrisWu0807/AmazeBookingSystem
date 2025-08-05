@@ -40,6 +40,44 @@ const maskPhoneNumber = (phone) => {
 // 添加授權路由
 app.use('/api', authRoutes);
 
+// 添加授權回調路由（不在 /api 路徑下）
+app.get('/auth/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少授權碼'
+      });
+    }
+
+    console.log('🔄 處理授權回調，授權碼:', code.substring(0, 10) + '...');
+    
+    const calendarService = new GoogleCalendarService();
+    const success = await calendarService.handleAuthCallback(code);
+    
+    if (success) {
+      res.json({
+        success: true,
+        message: 'OAuth 2.0 授權成功！現在可以使用預約功能了。'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'OAuth 2.0 授權失敗'
+      });
+    }
+  } catch (error) {
+    console.error('❌ 處理授權回調失敗:', error.message);
+    res.status(500).json({
+      success: false,
+      message: '處理授權回調失敗',
+      error: error.message
+    });
+  }
+});
+
 // API 路由
 
 // 1. 新增預約資料
@@ -318,8 +356,8 @@ app.get("/auth", (req, res) => {
 
 // 處理前端路由 - 所有非 API 路徑都返回前端應用
 app.get("*", (req, res) => {
-  // 排除 API 路由
-  if (req.path.startsWith('/api/')) {
+  // 排除 API 路由和授權回調
+  if (req.path.startsWith('/api/') || req.path === '/auth/callback') {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
   res.sendFile(path.join(__dirname, "../client/build/index.html"));
