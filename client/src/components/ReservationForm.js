@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { UserPlus, Phone, Calendar, Clock, FileText, CheckCircle } from 'lucide-react';
 
-// 時間段設置：從10:00開始，每30分鐘一個時段，最晚20:30
+// 時間段設置：從10:00開始，每30分鐘一個時段，最晚19:30
 const timeSlots = [
   '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
   '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', 
   '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', 
-  '19:00', '19:30', '20:00', '20:30'
+  '19:00', '19:30'
 ];
 
 const ReservationForm = () => {
@@ -25,6 +25,7 @@ const ReservationForm = () => {
   const [bookedSlots, setBookedSlots] = useState({});
   const [selectedDate, setSelectedDate] = useState('');
   const [error, setError] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // 當日期改變時，獲取該日期的可用時段
   useEffect(() => {
@@ -130,6 +131,19 @@ const ReservationForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 檢查必填欄位
+    if (!formData.name || !formData.phone || !formData.date || !formData.time) {
+      setMessage({ type: 'error', text: '請填寫所有必填欄位' });
+      return;
+    }
+    
+    // 顯示確認彈窗
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmReservation = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
     setMessage({ type: '', text: '' });
     setError(null);
@@ -160,6 +174,10 @@ const ReservationForm = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelReservation = () => {
+    setShowConfirmModal(false);
   };
 
   // 如果出現錯誤，顯示錯誤信息
@@ -329,6 +347,48 @@ const ReservationForm = () => {
           </form>
         </div>
       </div>
+
+      {/* 確認預約彈窗 */}
+      {showConfirmModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>📋 確認預約資訊</h3>
+            </div>
+            <div className="modal-body">
+              <p>
+                <strong>{formData.name}</strong> 先生/小姐，您預約的時段是：
+              </p>
+              <div className="reservation-details">
+                <p><strong>📅 日期：</strong>{formData.date}</p>
+                <p><strong>🕐 時段：</strong>{getTimeSlotText(formData.time)}</p>
+                <p><strong>📞 電話：</strong>{formData.phone}</p>
+                {formData.note && (
+                  <p><strong>📝 備註：</strong>{formData.note}</p>
+                )}
+              </div>
+              <p className="confirm-question">請問是否正確？</p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleCancelReservation}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleConfirmReservation}
+                disabled={loading}
+              >
+                {loading ? '處理中...' : '確認預約'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
