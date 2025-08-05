@@ -58,8 +58,8 @@ app.get('/auth/callback', async (req, res) => {
 
     console.log('🔄 處理授權回調，授權碼:', code.substring(0, 10) + '...');
     
-    const calendarService = new GoogleCalendarService();
-    const success = await calendarService.handleAuthCallback(code);
+    const calendarServiceForAuth = new GoogleCalendarService();
+    const success = await calendarServiceForAuth.handleAuthCallback(code);
     
     if (success) {
       res.json({
@@ -114,8 +114,10 @@ app.post('/api/reservations', async (req, res) => {
       });
     }
 
-    // 檢查是否為假日（從Google Calendar）
+    // 創建Google Calendar服務實例
     const calendarService = new GoogleCalendarService();
+    
+    // 檢查是否為假日（從Google Calendar）
     try {
       const events = await calendarService.getEventsByDate(date);
       
@@ -154,7 +156,6 @@ app.post('/api/reservations', async (req, res) => {
     }
 
     // 檢查時段是否已被預約
-    const calendarService = new GoogleCalendarService();
     const hasConflict = await calendarService.checkTimeSlotConflict(date, time);
     
     if (hasConflict) {
@@ -176,7 +177,6 @@ app.post('/api/reservations', async (req, res) => {
 
     // 直接同步到 Google Calendar
     try {
-      const calendarService = new GoogleCalendarService();
       const calendarEvent = await calendarService.createEvent(newReservation);
       console.log('✅ 預約已同步到 Google Calendar');
       
@@ -362,8 +362,8 @@ app.get('/api/reservations/date/:date', async (req, res) => {
     }
 
     // 檢查是否為假日（從Google Calendar）
-    const calendarService = new GoogleCalendarService();
-    const dayReservations = await calendarService.getEventsByDate(date);
+    const calendarServiceForDate = new GoogleCalendarService();
+    const dayReservations = await calendarServiceForDate.getEventsByDate(date);
     
     // 查找假日事件
     const holidayEvent = dayReservations.find(event => {
