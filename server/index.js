@@ -1,3 +1,6 @@
+// 載入環境變數配置
+require('./env-config');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -6,7 +9,8 @@ const moment = require('moment');
 const path = require("path");
 const { v4: uuidv4 } = require('uuid');
 const DatabaseService = require('./database');
-const GoogleCalendarService = require('./googleCalendar');
+const GoogleCalendarService = require('./googleCalendar-oauth');
+const authRoutes = require('./auth-routes');
 
 const app = express();
 const PORT = process.env.PORT || 3050;
@@ -32,6 +36,9 @@ const maskPhoneNumber = (phone) => {
   if (!phone) return '';
   return phone.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2');
 };
+
+// 添加授權路由
+app.use('/api', authRoutes);
 
 // API 路由
 
