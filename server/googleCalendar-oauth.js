@@ -204,8 +204,8 @@ class GoogleCalendarService {
       return response.data.items.map(event => ({
         id: event.id,
         summary: event.summary,
-        start: event.start.dateTime,
-        end: event.end.dateTime,
+        start: event.start.dateTime || event.start.date, // 支持dateTime和date格式
+        end: event.end.dateTime || event.end.date, // 支持dateTime和date格式
         description: event.description
       }));
     } catch (error) {
