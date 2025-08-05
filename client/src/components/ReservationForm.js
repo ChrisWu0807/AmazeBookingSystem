@@ -26,6 +26,8 @@ const ReservationForm = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [error, setError] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState({});
 
   // 當日期改變時，獲取該日期的可用時段
   useEffect(() => {
@@ -155,7 +157,15 @@ const ReservationForm = () => {
       });
       
       if (response.data.success) {
-        setMessage({ type: 'success', text: '預約成功！已直接同步到 Google Calendar。' });
+        // 設置成功數據
+        setSuccessData({
+          name: formData.name,
+          date: formData.date,
+          time: formData.time
+        });
+        setShowSuccessModal(true);
+        
+        // 清空表單
         setFormData({
           name: '',
           phone: '',
@@ -384,6 +394,40 @@ const ReservationForm = () => {
                 disabled={loading}
               >
                 {loading ? '處理中...' : '確認預約'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 預約成功彈窗 */}
+      {showSuccessModal && (
+        <div className="modal-overlay">
+          <div className="modal-content success-modal">
+            <div className="modal-header">
+              <h3>🎉 恭喜預約成功</h3>
+            </div>
+            <div className="modal-body">
+              <div className="success-message">
+                <p className="success-subtitle">
+                  我們 {successData.date} {successData.time} 見
+                </p>
+              </div>
+              <div className="notice-section">
+                <h4>📋 注意事項</h4>
+                <ul>
+                  <li>⏰ 預約時長一小時</li>
+                  <li>📞 修改 / 取消預約請提早來電通知</li>
+                </ul>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setShowSuccessModal(false)}
+              >
+                確定
               </button>
             </div>
           </div>

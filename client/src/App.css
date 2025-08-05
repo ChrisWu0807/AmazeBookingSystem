@@ -126,18 +126,18 @@
 }
 
 .time-slot-btn:hover:not(.selected):not(:disabled) {
-  border-color: #cb1957;
-  background: #fef7f9;
+  border-color: #007bff;
+  background: #f8f9ff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(203, 25, 87, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .time-slot-btn.selected {
-  border-color: #cb1957 !important;
-  background: #cb1957 !important;
+  border-color: #007bff !important;
+  background: #007bff !important;
   color: #ffffff !important;
   transform: scale(1.05);
-  box-shadow: 0 4px 8px rgba(203, 25, 87, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
   animation: selectedPulse 0.6s ease-in-out;
 }
 
@@ -162,14 +162,14 @@
 
 /* 時段狀態樣式 */
 .time-slot-btn.available {
-  border-color: #cb1957;
+  border-color: #28a745;
   background: #ffffff;
   color: #333;
 }
 
 .time-slot-btn.available:hover {
-  border-color: #cb1957;
-  background: #fef7f9;
+  border-color: #28a745;
+  background: #f8fff8;
   transform: translateY(-1px);
 }
 
@@ -322,7 +322,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #cb1957 0%, #a01545 100%);
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
   color: white;
   border: none;
   padding: 12px 24px;
@@ -331,13 +331,13 @@
   font-size: 14px;
   font-weight: 500;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(203, 25, 87, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #a01545 0%, #cb1957 100%);
+  background: linear-gradient(135deg, #0056b3 0%, #007bff 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(203, 25, 87, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
 }
 
 .btn-primary:disabled {
@@ -379,4 +379,46 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* 成功彈窗樣式 */
+.success-modal .modal-header h3 {
+  color: #28a745;
+  text-align: center;
+}
+
+.success-message {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.success-subtitle {
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
+}
+
+.notice-section {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #28a745;
+}
+
+.notice-section h4 {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.notice-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.notice-section li {
+  margin: 8px 0;
+  color: #666;
+  line-height: 1.5;
 } 
