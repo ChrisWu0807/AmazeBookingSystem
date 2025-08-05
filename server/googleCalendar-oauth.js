@@ -146,9 +146,18 @@ class GoogleCalendarService {
   }
 
   getEndTime(startTime) {
-    const hour = parseInt(startTime.split(':')[0]);
-    const nextHour = hour === 23 ? 0 : hour + 1;
-    return `${nextHour.toString().padStart(2, '0')}:00`;
+    const [hour, minute] = startTime.split(':');
+    const currentHour = parseInt(hour);
+    
+    // 計算結束時間（1小時後）
+    let endHour = currentHour + 1;
+    
+    // 處理跨日的情況
+    if (endHour >= 24) {
+      endHour = 0;
+    }
+    
+    return `${endHour.toString().padStart(2, '0')}:${minute}`;
   }
 
   async getEventsByDate(date) {
@@ -186,12 +195,15 @@ class GoogleCalendarService {
       const events = await this.getEventsByDate(date);
       const targetTime = `${date}T${time}:00+08:00`;
       
-      // 檢查是否有相同時段的預約
-      return events.some(event => {
+      // 計算該時段的預約數量
+      const slotCount = events.filter(event => {
         const eventStart = new Date(event.start);
         const targetStart = new Date(targetTime);
         return eventStart.getTime() === targetStart.getTime();
-      });
+      }).length;
+      
+      // 如果該時段已有2組或以上預約，則衝突
+      return slotCount >= 2;
     } catch (error) {
       console.error("❌ 檢查時段衝突失敗:", error);
       // 如果無法連接到 Google Calendar，返回 false（允許預約）

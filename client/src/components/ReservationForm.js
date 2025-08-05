@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../config/api';
 import { UserPlus, Phone, Calendar, Clock, FileText, CheckCircle } from 'lucide-react';
 
@@ -14,11 +14,15 @@ const ReservationForm = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [bookedSlots, setBookedSlots] = useState({});
   const [selectedDate, setSelectedDate] = useState('');
 
+  // 新的時間段設置：從10:00開始，每30分鐘一個時段，最晚20:30
   const timeSlots = [
-    '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', 
-    '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', 
+    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', 
+    '19:00', '19:30', '20:00', '20:30'
   ];
 
   // 當日期改變時，獲取該日期的可用時段
@@ -26,31 +30,36 @@ const ReservationForm = () => {
     if (selectedDate) {
       fetchAvailableSlots(selectedDate);
     }
-  }, [selectedDate]);
+  }, [selectedDate, fetchAvailableSlots]);
 
-  const fetchAvailableSlots = async (date) => {
+  const fetchAvailableSlots = useCallback(async (date) => {
     try {
       // 獲取該日期的所有 Google Calendar 事件
       const response = await api.get(`/reservations/date/${date}`);
       const calendarEvents = response.data.data || [];
       
-      // 從事件中提取已預約的時段
-      const bookedSlots = calendarEvents.map(event => {
+      // 從事件中提取已預約的時段和計數
+      const slotCounts = {};
+      calendarEvents.forEach(event => {
         const startTime = new Date(event.start);
-        return startTime.toTimeString().slice(0, 5); // 提取 HH:MM 格式
+        const timeSlot = startTime.toTimeString().slice(0, 5); // 提取 HH:MM 格式
+        slotCounts[timeSlot] = (slotCounts[timeSlot] || 0) + 1;
       });
       
-      // 過濾出可用時段
-      const available = timeSlots.filter(slot => 
-        !bookedSlots.includes(slot)
-      );
+      // 過濾出可用時段（最多同時段接上限兩組）
+      const available = timeSlots.filter(slot => {
+        const count = slotCounts[slot] || 0;
+        return count < 2; // 最多兩組
+      });
       
       setAvailableSlots(available);
+      setBookedSlots(slotCounts);
     } catch (error) {
       console.error('獲取可用時段失敗:', error);
       setAvailableSlots(timeSlots); // 如果API失敗，顯示所有時段
+      setBookedSlots({});
     }
-  };
+  }, [timeSlots]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -76,6 +85,36 @@ const ReservationForm = () => {
     }));
   };
 
+  // 獲取時段顯示文字
+  const getTimeSlotText = (time) => {
+    const [hour, minute] = time.split(':');
+    const currentHour = parseInt(hour);
+    
+    // 計算結束時間（1小時後）
+    let endHour = currentHour + 1;
+    
+    // 處理跨日的情況
+    if (endHour >= 24) {
+      endHour = 0;
+    }
+    
+    const endTime = `${endHour.toString().padStart(2, '0')}:${minute}`;
+    return `${time} - ${endTime}`;
+  };
+
+  // 獲取時段狀態樣式
+  const getTimeSlotStyle = (time) => {
+    const count = bookedSlots[time] || 0;
+    
+    if (count >= 2) {
+      return 'booked'; // 已滿
+    } else if (count === 1) {
+      return 'partially-booked'; // 部分預約
+    } else {
+      return 'available'; // 可用
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -98,6 +137,7 @@ const ReservationForm = () => {
         });
         setSelectedDate('');
         setAvailableSlots([]);
+        setBookedSlots({});
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || '預約失敗，請稍後再試';
@@ -176,28 +216,33 @@ const ReservationForm = () => {
             <div className="form-group">
               <label className="form-label">
                 <Clock size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                預約時段 *
+                預約時段 * (每時段最多同時接兩組預約)
               </label>
               <div className="time-slots-container">
                 {selectedDate ? (
-                  availableSlots.length > 0 ? (
-                    <div className="time-slots-grid">
-                      {availableSlots.map(slot => (
+                  <div className="time-slots-grid">
+                    {timeSlots.map(slot => {
+                      const slotStyle = getTimeSlotStyle(slot);
+                      const isAvailable = availableSlots.includes(slot);
+                      const count = bookedSlots[slot] || 0;
+                      
+                      return (
                         <button
                           key={slot}
                           type="button"
-                          className={`time-slot-btn ${formData.time === slot ? 'selected' : ''}`}
-                          onClick={() => handleTimeSlotClick(slot)}
+                          className={`time-slot-btn ${slotStyle} ${formData.time === slot ? 'selected' : ''}`}
+                          onClick={() => isAvailable && handleTimeSlotClick(slot)}
+                          disabled={!isAvailable}
+                          title={count > 0 ? `已預約 ${count}/2 組` : '可預約'}
                         >
-                          {slot} - {slot.split(':')[0] === '23' ? '00:00' : `${parseInt(slot.split(':')[0]) + 1}:00`}
+                          <div className="time-slot-text">{getTimeSlotText(slot)}</div>
+                          {count > 0 && (
+                            <div className="booking-count">({count}/2)</div>
+                          )}
                         </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="no-slots-message">
-                      該日期已無可用時段，請選擇其他日期
-                    </div>
-                  )
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div className="select-date-message">
                     請先選擇預約日期

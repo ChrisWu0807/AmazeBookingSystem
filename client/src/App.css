@@ -114,6 +114,54 @@
   border-color: #ddd;
 }
 
+/* 時段狀態樣式 */
+.time-slot-btn.available {
+  border-color: #28a745;
+  background: #ffffff;
+  color: #333;
+}
+
+.time-slot-btn.available:hover {
+  border-color: #28a745;
+  background: #f8fff8;
+  transform: translateY(-1px);
+}
+
+.time-slot-btn.partially-booked {
+  border-color: #ffc107;
+  background: #fff8e1;
+  color: #856404;
+}
+
+.time-slot-btn.partially-booked:hover {
+  border-color: #ffc107;
+  background: #fff3cd;
+  transform: translateY(-1px);
+}
+
+.time-slot-btn.booked {
+  border-color: #dc3545;
+  background: #f8d7da;
+  color: #721c24;
+  cursor: not-allowed;
+}
+
+.time-slot-btn.booked:hover {
+  transform: none;
+}
+
+/* 時段內容樣式 */
+.time-slot-text {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.booking-count {
+  font-size: 11px;
+  opacity: 0.8;
+  font-weight: normal;
+}
+
 .select-date-message,
 .no-slots-message {
   padding: 16px;
