@@ -430,4 +430,388 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// 9. 查詢預約（支持多種篩選條件）
+router.get('/reservations/search', async (req, res) => {
+  try {
+    const { 
+      name, 
+      phone, 
+      date, 
+      start_date, 
+      end_date, 
+      status,
+      page = 1, 
+      limit = 20 
+    } = req.query;
+    
+    const calendarService = new GoogleCalendarService();
+    
+    // 確定日期範圍
+    let startDate, endDate;
+    if (date) {
+      startDate = date;
+      endDate = date;
+    } else if (start_date && end_date) {
+      startDate = start_date;
+      endDate = end_date;
+    } else {
+      startDate = moment().format('YYYY-MM-DD');
+      endDate = moment().add(30, 'days').format('YYYY-MM-DD');
+    }
+    
+    const events = await calendarService.getEventsByDateRange(startDate, endDate);
+    
+    // 過濾出預約事件
+    let reservations = events
+      .filter(event => event.summary && event.summary.includes('客戶預約'))
+      .map(event => {
+        const startTime = new Date(event.start.dateTime || event.start.date);
+        const endTime = new Date(event.end.dateTime || event.end.date);
+        
+        // 從描述中提取客戶信息
+        const description = event.description || '';
+        const nameMatch = description.match(/姓名[：:]\s*([^\n]+)/);
+        const phoneMatch = description.match(/電話[：:]\s*([^\n]+)/);
+        const noteMatch = description.match(/備註[：:]\s*([^\n]+)/);
+        
+        return {
+          id: event.id,
+          name: nameMatch ? nameMatch[1].trim() : '未知',
+          phone: phoneMatch ? phoneMatch[1].trim() : '未知',
+          date: startTime.toISOString().split('T')[0],
+          time: startTime.toTimeString().slice(0, 5),
+          note: noteMatch ? noteMatch[1].trim() : '',
+          check_status: '已確認',
+          created_at: startTime.toISOString(),
+          google_event_id: event.id
+        };
+      });
+    
+    // 應用篩選條件
+    if (name) {
+      reservations = reservations.filter(r => 
+        r.name.toLowerCase().includes(name.toLowerCase())
+      );
+    }
+    
+    if (phone) {
+      reservations = reservations.filter(r => 
+        r.phone.includes(phone)
+      );
+    }
+    
+    if (status) {
+      reservations = reservations.filter(r => r.check_status === status);
+    }
+    
+    // 按日期和時間排序
+    reservations.sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.time.localeCompare(b.time);
+    });
+    
+    // 應用分頁
+    const total = reservations.length;
+    const offset = (page - 1) * limit;
+    const paginatedReservations = reservations.slice(offset, offset + parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: {
+        reservations: paginatedReservations,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('查詢預約失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '查詢預約失敗',
+      error: error.message
+    });
+  }
+});
+
+// 10. 獲取單個預約詳情
+router.get('/reservations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const calendarService = new GoogleCalendarService();
+    const event = await calendarService.getEvent(id);
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: '預約不存在'
+      });
+    }
+    
+    if (!event.summary || !event.summary.includes('客戶預約')) {
+      return res.status(404).json({
+        success: false,
+        message: '該事件不是客戶預約'
+      });
+    }
+    
+    const startTime = new Date(event.start.dateTime || event.start.date);
+    const endTime = new Date(event.end.dateTime || event.end.date);
+    
+    // 從描述中提取客戶信息
+    const description = event.description || '';
+    const nameMatch = description.match(/姓名[：:]\s*([^\n]+)/);
+    const phoneMatch = description.match(/電話[：:]\s*([^\n]+)/);
+    const noteMatch = description.match(/備註[：:]\s*([^\n]+)/);
+    
+    const reservation = {
+      id: event.id,
+      name: nameMatch ? nameMatch[1].trim() : '未知',
+      phone: phoneMatch ? phoneMatch[1].trim() : '未知',
+      date: startTime.toISOString().split('T')[0],
+      time: startTime.toTimeString().slice(0, 5),
+      note: noteMatch ? noteMatch[1].trim() : '',
+      check_status: '已確認',
+      created_at: startTime.toISOString(),
+      google_event_id: event.id
+    };
+    
+    res.json({
+      success: true,
+      data: reservation
+    });
+  } catch (error) {
+    console.error('獲取預約詳情失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '獲取預約詳情失敗',
+      error: error.message
+    });
+  }
+});
+
+// 11. 修改預約（刪除原事件並創建新事件）
+router.put('/reservations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, date, time, note } = req.body;
+    
+    // 驗證必填欄位
+    if (!name || !phone || !date || !time) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必填欄位：姓名、電話、日期、時段'
+      });
+    }
+    
+    // 驗證日期格式
+    if (!moment(date, 'YYYY-MM-DD', true).isValid()) {
+      return res.status(400).json({
+        success: false,
+        message: '日期格式錯誤，請使用 YYYY-MM-DD 格式'
+      });
+    }
+    
+    // 驗證時間格式
+    if (!moment(time, 'HH:mm', true).isValid()) {
+      return res.status(400).json({
+        success: false,
+        message: '時間格式錯誤，請使用 HH:mm 格式'
+      });
+    }
+    
+    const calendarService = new GoogleCalendarService();
+    
+    // 獲取原事件
+    const originalEvent = await calendarService.getEvent(id);
+    if (!originalEvent) {
+      return res.status(404).json({
+        success: false,
+        message: '預約不存在'
+      });
+    }
+    
+    // 刪除原事件
+    await calendarService.deleteEvent(id);
+    
+    // 創建新事件
+    const newEventData = {
+      date,
+      time,
+      summary: '客戶預約',
+      description: `姓名：${name}\n電話：${phone}${note ? `\n備註：${note}` : ''}`
+    };
+    
+    const newEvent = await calendarService.createEvent(newEventData);
+    
+    res.json({
+      success: true,
+      message: '預約修改成功',
+      data: {
+        id: newEvent.id,
+        name,
+        phone,
+        date,
+        time,
+        note,
+        check_status: '已確認'
+      }
+    });
+  } catch (error) {
+    console.error('修改預約失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '修改預約失敗',
+      error: error.message
+    });
+  }
+});
+
+// 12. 批量操作預約
+router.post('/reservations/batch', async (req, res) => {
+  try {
+    const { action, reservation_ids } = req.body;
+    
+    if (!action || !reservation_ids || !Array.isArray(reservation_ids)) {
+      return res.status(400).json({
+        success: false,
+        message: '請提供操作類型和預約ID列表'
+      });
+    }
+    
+    const calendarService = new GoogleCalendarService();
+    const results = [];
+    
+    for (const id of reservation_ids) {
+      try {
+        if (action === 'delete') {
+          await calendarService.deleteEvent(id);
+          results.push({ id, success: true, message: '刪除成功' });
+        } else if (action === 'cancel') {
+          // 取消預約（實際上是刪除事件）
+          await calendarService.deleteEvent(id);
+          results.push({ id, success: true, message: '取消成功' });
+        } else {
+          results.push({ id, success: false, message: '不支持的操作類型' });
+        }
+      } catch (error) {
+        results.push({ id, success: false, message: error.message });
+      }
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.length - successCount;
+    
+    res.json({
+      success: true,
+      message: `批量操作完成：成功 ${successCount} 個，失敗 ${failCount} 個`,
+      data: {
+        results,
+        summary: {
+          total: results.length,
+          success: successCount,
+          failed: failCount
+        }
+      }
+    });
+  } catch (error) {
+    console.error('批量操作預約失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '批量操作預約失敗',
+      error: error.message
+    });
+  }
+});
+
+// 13. 獲取預約統計報表
+router.get('/reservations/report', async (req, res) => {
+  try {
+    const { start_date, end_date, group_by = 'date' } = req.query;
+    
+    if (!start_date || !end_date) {
+      return res.status(400).json({
+        success: false,
+        message: '請提供開始日期和結束日期'
+      });
+    }
+    
+    const calendarService = new GoogleCalendarService();
+    const events = await calendarService.getEventsByDateRange(start_date, end_date);
+    
+    // 過濾出預約事件
+    const reservations = events
+      .filter(event => event.summary && event.summary.includes('客戶預約'))
+      .map(event => {
+        const startTime = new Date(event.start.dateTime || event.start.date);
+        return {
+          date: startTime.toISOString().split('T')[0],
+          time: startTime.toTimeString().slice(0, 5),
+          hour: startTime.getHours()
+        };
+      });
+    
+    let report;
+    
+    if (group_by === 'date') {
+      // 按日期分組
+      const dateGroups = {};
+      reservations.forEach(reservation => {
+        const date = reservation.date;
+        if (!dateGroups[date]) {
+          dateGroups[date] = { date, count: 0, time_slots: {} };
+        }
+        dateGroups[date].count++;
+        
+        const timeSlot = reservation.time;
+        if (!dateGroups[date].time_slots[timeSlot]) {
+          dateGroups[date].time_slots[timeSlot] = 0;
+        }
+        dateGroups[date].time_slots[timeSlot]++;
+      });
+      
+      report = Object.values(dateGroups).sort((a, b) => a.date.localeCompare(b.date));
+    } else if (group_by === 'hour') {
+      // 按小時分組
+      const hourGroups = {};
+      for (let hour = 10; hour <= 20; hour++) {
+        hourGroups[hour] = { hour, count: 0 };
+      }
+      
+      reservations.forEach(reservation => {
+        const hour = reservation.hour;
+        if (hourGroups[hour]) {
+          hourGroups[hour].count++;
+        }
+      });
+      
+      report = Object.values(hourGroups);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        report,
+        summary: {
+          total_reservations: reservations.length,
+          date_range: { start_date, end_date },
+          group_by
+        }
+      }
+    });
+  } catch (error) {
+    console.error('獲取預約報表失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '獲取預約報表失敗',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router; 

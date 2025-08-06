@@ -335,6 +335,39 @@ class GoogleCalendarService {
     }
   }
 
+  async getEvent(eventId, calendarId = null) {
+    if (!this.isAuthorized()) {
+      throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
+    }
+
+    // 使用指定的日曆ID或默認日曆ID
+    const targetCalendarId = calendarId || this.calendarId;
+
+    try {
+      const response = await this.calendar.events.get({
+        calendarId: targetCalendarId,
+        eventId: eventId
+      });
+      
+      console.log('✅ 獲取 Google Calendar 事件成功:', eventId);
+      return response.data;
+    } catch (error) {
+      console.error('❌ 獲取 Google Calendar 事件失敗:', error);
+      
+      // 如果是令牌過期，嘗試刷新
+      if (error.code === 401) {
+        console.log('🔄 嘗試刷新令牌...');
+        const refreshed = await this.refreshTokens();
+        if (refreshed) {
+          // 重試獲取事件
+          return await this.getEvent(eventId, calendarId);
+        }
+      }
+      
+      throw error;
+    }
+  }
+
   async deleteEvent(eventId, calendarId = null) {
     if (!this.isAuthorized()) {
       throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
