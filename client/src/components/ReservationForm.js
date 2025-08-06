@@ -42,15 +42,16 @@ const generateTimeSlots = (startTime, endTime, isSaturday = false) => {
         currentHour += 1;
       }
     } else {
-      // 其他天：每30分鐘一個時段，排除午休和13:30-14:30，但包含14:00-15:00和19:30-20:30
+      // 其他天：每30分鐘一個時段，排除午休和13:30-14:30，但包含14:00-15:00和19:30-20:30，排除20:00-21:00
       const isLunchBreak = (currentHour === 12 && currentMinute >= 30) || 
                            (currentHour === 13 && currentMinute < 30);
       const isExcludedSlot = (currentHour === 13 && currentMinute >= 30) || 
                              (currentHour === 14 && currentMinute < 30);
       const isIncludedSlot = (currentHour === 14 && currentMinute === 0) ||
                              (currentHour === 19 && currentMinute >= 30);
+      const isExcluded20Slot = (currentHour === 20 && currentMinute === 0);
       
-      if ((!isLunchBreak && !isExcludedSlot) || isIncludedSlot) {
+      if ((!isLunchBreak && !isExcludedSlot && !isExcluded20Slot) || isIncludedSlot) {
         slots.push(timeSlot);
       }
       
