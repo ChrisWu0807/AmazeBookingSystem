@@ -10,14 +10,14 @@ const businessHours = {
   wednesday: { start: '10:00', end: '19:30', closed: false },
   thursday: { start: '10:00', end: '19:30', closed: false },
   friday: { start: '10:00', end: '19:30', closed: false },
-  // 週六：10:00-12:00（只營業到中午）
-  saturday: { start: '10:00', end: '12:00', closed: false },
+  // 週六：12:00-18:00（最晚預約時間17:00）
+  saturday: { start: '12:00', end: '18:00', closed: false },
   // 週日：公休
   sunday: { start: '10:00', end: '19:30', closed: true }
 };
 
 // 生成時間段函數
-const generateTimeSlots = (startTime, endTime) => {
+const generateTimeSlots = (startTime, endTime, isSaturday = false) => {
   const slots = [];
   const [startHour, startMinute] = startTime.split(':').map(Number);
   const [endHour, endMinute] = endTime.split(':').map(Number);
@@ -32,7 +32,10 @@ const generateTimeSlots = (startTime, endTime) => {
     const isLunchBreak = (currentHour === 12 && currentMinute >= 30) || 
                          (currentHour === 13 && currentMinute < 30);
     
-    if (!isLunchBreak) {
+    // 週六特殊處理：最晚預約時間17:00（因為預約時長1小時）
+    const isSaturdayLateSlot = isSaturday && currentHour >= 17;
+    
+    if (!isLunchBreak && !isSaturdayLateSlot) {
       slots.push(timeSlot);
     }
     
@@ -116,7 +119,8 @@ const ReservationForm = () => {
       }
       
       // 根據營業時間生成時段
-      const timeSlotsForDate = generateTimeSlots(hours.start, hours.end);
+      const isSaturday = new Date(date).getDay() === 6; // 6 = 週六
+      const timeSlotsForDate = generateTimeSlots(hours.start, hours.end, isSaturday);
       
       // 獲取該日期的所有 Google Calendar 事件
       const response = await api.get(`/reservations/date/${date}`);
@@ -421,11 +425,7 @@ const ReservationForm = () => {
                             📅 營業時間：{businessHoursForDate.start} - {businessHoursForDate.end}
                             <br />
                             🍽️ 13:00-14:00 午休時間
-                            {selectedDate && new Date(selectedDate).getDay() === 6 && (
-                              <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
-                                <br />（週六只營業到中午）
-                              </span>
-                            )}
+
                             {holidayInfo && holidayInfo.time_slots && holidayInfo.time_slots.length > 0 && (
                               <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
                                 <br />🚫 假日限制時段：{holidayInfo.time_slots.join(', ')}
