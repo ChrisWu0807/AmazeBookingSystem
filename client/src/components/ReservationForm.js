@@ -29,8 +29,8 @@ const generateTimeSlots = (startTime, endTime, isSaturday = false) => {
     const timeSlot = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
     
     if (isSaturday) {
-      // 週六：每30分鐘開始一個1小時時段，最晚預約時間17:00
-      const isSaturdayLateSlot = currentHour >= 17;
+      // 週六：每30分鐘開始一個1小時時段，包含17:00-18:00
+      const isSaturdayLateSlot = currentHour >= 18;
       if (!isSaturdayLateSlot) {
         slots.push(timeSlot);
       }
@@ -41,11 +41,13 @@ const generateTimeSlots = (startTime, endTime, isSaturday = false) => {
         currentHour += 1;
       }
     } else {
-      // 其他天：每30分鐘一個時段，排除午休
+      // 其他天：每30分鐘一個時段，排除午休和13:30-14:30
       const isLunchBreak = (currentHour === 12 && currentMinute >= 30) || 
                            (currentHour === 13 && currentMinute < 30);
+      const isExcludedSlot = (currentHour === 13 && currentMinute >= 30) || 
+                             (currentHour === 14 && currentMinute < 30);
       
-      if (!isLunchBreak) {
+      if (!isLunchBreak && !isExcludedSlot) {
         slots.push(timeSlot);
       }
       
