@@ -8,7 +8,6 @@ const morgan = require('morgan');
 const moment = require('moment');
 const path = require("path");
 const { v4: uuidv4 } = require('uuid');
-const fetch = require('node-fetch');
 const DatabaseService = require('./database');
 const GoogleCalendarService = require('./googleCalendar-oauth');
 const authRoutes = require('./auth-routes');
@@ -44,7 +43,8 @@ const sendReminderWebhook = async (reservationData) => {
   try {
     const webhookUrl = 'https://amazebookingfollowup.zeabur.app/webhook/962ff2e9-af9a-4eab-bed9-692af50e95d9';
     
-    const webhookData = {
+    // 構建查詢參數
+    const params = new URLSearchParams({
       reservation_id: reservationData.id,
       name: reservationData.name,
       phone: reservationData.phone,
@@ -52,23 +52,51 @@ const sendReminderWebhook = async (reservationData) => {
       time: reservationData.time,
       note: reservationData.note || '',
       created_at: new Date().toISOString()
-    };
-
-    console.log('📤 發送提醒 webhook:', webhookData);
-
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(webhookData)
     });
 
-    if (response.ok) {
-      console.log('✅ 提醒 webhook 發送成功');
-    } else {
-      console.error('❌ 提醒 webhook 發送失敗:', response.status, response.statusText);
-    }
+    const fullUrl = `${webhookUrl}?${params.toString()}`;
+    console.log('📤 發送提醒 webhook:', fullUrl);
+
+    // 使用 Node.js 原生的 https 模組
+    const https = require('https');
+    const url = require('url');
+    
+    const parsedUrl = url.parse(fullUrl);
+    
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || 443,
+      path: parsedUrl.path,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Amaze-Booking-System/1.0'
+      }
+    };
+
+    return new Promise((resolve, reject) => {
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log('✅ 提醒 webhook 發送成功');
+            resolve(data);
+          } else {
+            console.error('❌ 提醒 webhook 發送失敗:', res.statusCode, data);
+            reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        console.error('❌ 發送提醒 webhook 失敗:', error.message);
+        reject(error);
+      });
+
+      req.end();
+    });
   } catch (error) {
     console.error('❌ 發送提醒 webhook 失敗:', error.message);
   }
