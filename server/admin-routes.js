@@ -219,7 +219,7 @@ router.get('/time-slots/stats', async (req, res) => {
   }
 });
 
-// 5. 獲取假日設置（從Google Calendar）
+// 5. 獲取假日設置（從假日日曆）
 router.get('/holidays', async (req, res) => {
   try {
     const calendarService = new GoogleCalendarService();
@@ -228,14 +228,22 @@ router.get('/holidays', async (req, res) => {
     const startDate = moment().format('YYYY-MM-DD');
     const endDate = moment().add(30, 'days').format('YYYY-MM-DD');
     
-    const events = await calendarService.getEventsByDateRange(startDate, endDate);
+    // 從假日日曆獲取事件
+    const startOfRange = `${startDate}T00:00:00+08:00`;
+    const endOfRange = `${endDate}T23:59:59+08:00`;
     
-    // 過濾出假日事件（標題包含"假日"、"休息"、"暫停"等關鍵字）
-    const holidays = events.filter(event => {
-      const title = event.summary?.toLowerCase() || '';
-      const keywords = ['假日', '休息', '暫停', 'holiday', 'closed', 'break'];
-      return keywords.some(keyword => title.includes(keyword));
-    }).map(event => ({
+    const response = await calendarService.calendar.events.list({
+      calendarId: calendarService.holidayCalendarId,
+      timeMin: startOfRange,
+      timeMax: endOfRange,
+      singleEvents: true,
+      orderBy: 'startTime'
+    });
+    
+    const events = response.data.items;
+    
+    // 處理假日事件
+    const holidays = events.map(event => ({
       id: event.id,
       date: moment(event.start.dateTime || event.start.date).format('YYYY-MM-DD'),
       description: event.summary,
@@ -284,7 +292,7 @@ router.post('/holidays', async (req, res) => {
     
     const createdEvents = [];
     
-    // 為每個日期創建假日事件
+    // 為每個日期創建假日事件到假日日曆
     for (const date of dates) {
       if (time_slots.length === 0) {
         // 完全休息日 - 創建全天假日事件
@@ -294,7 +302,7 @@ router.post('/holidays', async (req, res) => {
           description: '' // 完全休息日
         };
         
-        const createdEvent = await calendarService.createEvent(holidayData);
+        const createdEvent = await calendarService.createEvent(holidayData, calendarService.holidayCalendarId);
         createdEvents.push({
           id: createdEvent.id,
           date,
@@ -311,7 +319,7 @@ router.post('/holidays', async (req, res) => {
             description: `限制時段：${timeSlot}`
           };
           
-          const createdEvent = await calendarService.createEvent(holidayData);
+          const createdEvent = await calendarService.createEvent(holidayData, calendarService.holidayCalendarId);
           createdEvents.push({
             id: createdEvent.id,
             date,
@@ -337,13 +345,13 @@ router.post('/holidays', async (req, res) => {
   }
 });
 
-// 7. 刪除假日（刪除Google Calendar事件）
+// 7. 刪除假日（刪除假日日曆事件）
 router.delete('/holidays/:eventId', async (req, res) => {
   try {
     const { eventId } = req.params;
     
     const calendarService = new GoogleCalendarService();
-    await calendarService.deleteEvent(eventId);
+    await calendarService.deleteEvent(eventId, calendarService.holidayCalendarId);
     
     res.json({
       success: true,

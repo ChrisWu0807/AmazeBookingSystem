@@ -12,7 +12,8 @@ class GoogleCalendarService {
     );
     
     this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
-    this.calendarId = 'primary'; // 使用 primary 日曆
+    this.calendarId = 'c_1e63bb3f36499d33d3bcf134b0b2eb69796a045fc5dcc2b548d8983250f369b4@group.calendar.google.com'; // 主日曆ID（用於預約）
+    this.holidayCalendarId = 'c_bef9794df3c8b577443f97fff8834e6225e0cd13bf95aa32e4e37901a6602303@group.calendar.google.com'; // 假日日曆ID
     
     // 嘗試載入已保存的令牌
     this.loadTokens();
@@ -89,10 +90,13 @@ class GoogleCalendarService {
     }
   }
 
-  async createEvent(reservation) {
+  async createEvent(reservation, calendarId = null) {
     if (!this.isAuthorized()) {
       throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
     }
+
+    // 使用指定的日曆ID或默認日曆ID
+    const targetCalendarId = calendarId || this.calendarId;
 
     // 檢查是否是假日事件（沒有time字段）
     const isHolidayEvent = !reservation.time;
@@ -165,7 +169,7 @@ class GoogleCalendarService {
 
     try {
       const response = await this.calendar.events.insert({
-        calendarId: this.calendarId,
+        calendarId: targetCalendarId,
         resource: event,
       });
       
@@ -180,7 +184,7 @@ class GoogleCalendarService {
         const refreshed = await this.refreshTokens();
         if (refreshed) {
           // 重試創建事件
-          return await this.createEvent(reservation);
+          return await this.createEvent(reservation, calendarId);
         }
       }
       
@@ -233,6 +237,80 @@ class GoogleCalendarService {
     }
   }
 
+  // 新增：獲取假日日曆事件
+  async getHolidayEventsByDate(date) {
+    if (!this.isAuthorized()) {
+      throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
+    }
+
+    try {
+      const startOfDay = `${date}T00:00:00+08:00`;
+      const endOfDay = `${date}T23:59:59+08:00`;
+      
+      const response = await this.calendar.events.list({
+        calendarId: this.holidayCalendarId,
+        timeMin: startOfDay,
+        timeMax: endOfDay,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+      
+      return response.data.items.map(event => ({
+        id: event.id,
+        summary: event.summary,
+        start: event.start.dateTime || event.start.date,
+        end: event.end.dateTime || event.end.date,
+        description: event.description
+      }));
+    } catch (error) {
+      console.error('❌ 獲取假日日曆事件失敗:', error);
+      // 如果無法訪問假日日曆，返回空數組
+      return [];
+    }
+  }
+
+  // 新增：檢查指定時段是否為假日
+  async checkHolidayConflict(date, time) {
+    try {
+      const holidayEvents = await this.getHolidayEventsByDate(date);
+      
+      if (holidayEvents.length === 0) {
+        return false; // 沒有假日事件
+      }
+      
+      // 檢查是否有全天假日事件
+      const fullDayHoliday = holidayEvents.find(event => {
+        const start = event.start;
+        return !start.includes('T'); // 全天事件沒有時間部分
+      });
+      
+      if (fullDayHoliday) {
+        return true; // 全天假日
+      }
+      
+      // 檢查指定時段是否與假日事件衝突
+      const targetTime = `${date}T${time}:00+08:00`;
+      const targetEndTime = `${date}T${this.getEndTime(time)}:00+08:00`;
+      
+      return holidayEvents.some(event => {
+        if (!event.start.includes('T')) {
+          return false; // 全天事件不影響特定時段
+        }
+        
+        const eventStart = new Date(event.start);
+        const eventEnd = new Date(event.end);
+        const targetStart = new Date(targetTime);
+        const targetEnd = new Date(targetEndTime);
+        
+        // 檢查時間重疊
+        return eventStart < targetEnd && eventEnd > targetStart;
+      });
+    } catch (error) {
+      console.error('❌ 檢查假日衝突失敗:', error);
+      return false; // 如果無法檢查，允許預約
+    }
+  }
+
   async getEventsByDateRange(startDate, endDate) {
     if (!this.isAuthorized()) {
       throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
@@ -257,14 +335,17 @@ class GoogleCalendarService {
     }
   }
 
-  async deleteEvent(eventId) {
+  async deleteEvent(eventId, calendarId = null) {
     if (!this.isAuthorized()) {
       throw new Error('未授權，請先完成 OAuth 2.0 授權流程');
     }
 
+    // 使用指定的日曆ID或默認日曆ID
+    const targetCalendarId = calendarId || this.calendarId;
+
     try {
       await this.calendar.events.delete({
-        calendarId: this.calendarId,
+        calendarId: targetCalendarId,
         eventId: eventId
       });
       
@@ -279,7 +360,7 @@ class GoogleCalendarService {
         const refreshed = await this.refreshTokens();
         if (refreshed) {
           // 重試刪除事件
-          return await this.deleteEvent(eventId);
+          return await this.deleteEvent(eventId, calendarId);
         }
       }
       

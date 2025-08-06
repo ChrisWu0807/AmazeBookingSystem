@@ -117,38 +117,15 @@ app.post('/api/reservations', async (req, res) => {
     // 創建Google Calendar服務實例
     const calendarService = new GoogleCalendarService();
     
-    // 檢查是否為假日（從Google Calendar）
+    // 檢查是否為假日（從假日日曆）
     try {
-      const events = await calendarService.getEventsByDate(date);
+      const isHolidayConflict = await calendarService.checkHolidayConflict(date, time);
       
-      // 查找假日事件（標題包含"假日"、"休息"、"暫停"等關鍵字）
-      const holidayEvent = events.find(event => {
-        const title = event.summary?.toLowerCase() || '';
-        const keywords = ['假日', '休息', '暫停', 'holiday', 'closed', 'break'];
-        return keywords.some(keyword => title.includes(keyword));
-      });
-      
-      if (holidayEvent) {
-        // 如果假日事件有描述（包含限制時段），檢查當前時段是否被限制
-        if (holidayEvent.description) {
-          try {
-            const restrictedSlots = JSON.parse(holidayEvent.description);
-            if (restrictedSlots.length > 0 && restrictedSlots.includes(time)) {
-              return res.status(400).json({
-                success: false,
-                message: `該日期為假日（${holidayEvent.summary}），指定時段暫停預約`
-              });
-            }
-          } catch (error) {
-            console.error('解析假日時段限制失敗:', error);
-          }
-        } else {
-          // 如果沒有指定時段，整個日期都暫停預約
-          return res.status(400).json({
-            success: false,
-            message: `該日期為假日（${holidayEvent.summary}），暫停預約`
-          });
-        }
+      if (isHolidayConflict) {
+        return res.status(400).json({
+          success: false,
+          message: '該時段為假日，暫停預約'
+        });
       }
     } catch (error) {
       console.error('檢查假日失敗:', error);
@@ -361,17 +338,11 @@ app.get('/api/reservations/date/:date', async (req, res) => {
       });
     }
 
-    // 檢查是否為假日（從Google Calendar）
+    // 檢查是否為假日（從假日日曆）
     const calendarServiceForDate = new GoogleCalendarService();
     const dayReservations = await calendarServiceForDate.getEventsByDate(date);
+    const holidayEvents = await calendarServiceForDate.getHolidayEventsByDate(date);
     
-    // 查找假日事件
-    const holidayEvents = dayReservations.filter(event => {
-      const title = event.summary?.toLowerCase() || '';
-      const keywords = ['假日', '休息', '暫停', 'holiday', 'closed', 'break'];
-      return keywords.some(keyword => title.includes(keyword));
-    });
-
     // 處理假日信息
     let holidayInfo = null;
     if (holidayEvents.length > 0) {
