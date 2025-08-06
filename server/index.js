@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const moment = require('moment');
 const path = require("path");
 const { v4: uuidv4 } = require('uuid');
+const fetch = require('node-fetch');
 const DatabaseService = require('./database');
 const GoogleCalendarService = require('./googleCalendar-oauth');
 const authRoutes = require('./auth-routes');
@@ -36,6 +37,41 @@ const getWeekRange = (weekStr) => {
 const maskPhoneNumber = (phone) => {
   if (!phone) return '';
   return phone.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2');
+};
+
+// Webhook 發送函數
+const sendReminderWebhook = async (reservationData) => {
+  try {
+    const webhookUrl = 'https://amazebookingfollowup.zeabur.app/webhook/962ff2e9-af9a-4eab-bed9-692af50e95d9';
+    
+    const webhookData = {
+      reservation_id: reservationData.id,
+      name: reservationData.name,
+      phone: reservationData.phone,
+      date: reservationData.date,
+      time: reservationData.time,
+      note: reservationData.note || '',
+      created_at: new Date().toISOString()
+    };
+
+    console.log('📤 發送提醒 webhook:', webhookData);
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(webhookData)
+    });
+
+    if (response.ok) {
+      console.log('✅ 提醒 webhook 發送成功');
+    } else {
+      console.error('❌ 提醒 webhook 發送失敗:', response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error('❌ 發送提醒 webhook 失敗:', error.message);
+  }
 };
 
 // 添加授權路由
@@ -156,6 +192,12 @@ app.post('/api/reservations', async (req, res) => {
     try {
       const calendarEvent = await calendarService.createEvent(newReservation);
       console.log('✅ 預約已同步到 Google Calendar');
+      
+      // 發送提醒 webhook 到 n8n
+      await sendReminderWebhook({
+        ...newReservation,
+        calendarEventId: calendarEvent.id
+      });
       
       res.status(201).json({
         success: true,
