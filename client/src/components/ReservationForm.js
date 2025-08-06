@@ -4,12 +4,12 @@ import { UserPlus, Phone, Calendar, Clock, FileText, CheckCircle } from 'lucide-
 
 // 營業時間配置
 const businessHours = {
-  // 週一到週五：10:00-19:30
-  monday: { start: '10:00', end: '19:30', closed: false },
-  tuesday: { start: '10:00', end: '19:30', closed: false },
-  wednesday: { start: '10:00', end: '19:30', closed: false },
-  thursday: { start: '10:00', end: '19:30', closed: false },
-  friday: { start: '10:00', end: '19:30', closed: false },
+  // 週一到週五：10:00-20:30（新增19:30-20:30）
+  monday: { start: '10:00', end: '20:30', closed: false },
+  tuesday: { start: '10:00', end: '20:30', closed: false },
+  wednesday: { start: '10:00', end: '20:30', closed: false },
+  thursday: { start: '10:00', end: '20:30', closed: false },
+  friday: { start: '10:00', end: '20:30', closed: false },
   // 週六：12:00-18:00（最晚預約時間17:00）
   saturday: { start: '12:00', end: '18:00', closed: false },
   // 週日：公休
@@ -42,12 +42,13 @@ const generateTimeSlots = (startTime, endTime, isSaturday = false) => {
         currentHour += 1;
       }
     } else {
-      // 其他天：每30分鐘一個時段，排除午休和13:30-14:30，但包含14:00-15:00
+      // 其他天：每30分鐘一個時段，排除午休和13:30-14:30，但包含14:00-15:00和19:30-20:30
       const isLunchBreak = (currentHour === 12 && currentMinute >= 30) || 
                            (currentHour === 13 && currentMinute < 30);
       const isExcludedSlot = (currentHour === 13 && currentMinute >= 30) || 
                              (currentHour === 14 && currentMinute < 30);
-      const isIncludedSlot = (currentHour === 14 && currentMinute === 0);
+      const isIncludedSlot = (currentHour === 14 && currentMinute === 0) ||
+                             (currentHour === 19 && currentMinute >= 30);
       
       if ((!isLunchBreak && !isExcludedSlot) || isIncludedSlot) {
         slots.push(timeSlot);
@@ -414,7 +415,7 @@ const ReservationForm = () => {
             <div className="form-group">
               <label className="form-label">
                 <Clock size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                預約時段 * (每時段最多同時接兩組預約)
+                預約時段 *
               </label>
               <div className="time-slots-container">
                 {selectedDate ? (
@@ -437,7 +438,7 @@ const ReservationForm = () => {
                       {businessHoursForDate && (
                         <div className="business-hours-info">
                           <small>
-                            📅 營業時間：{businessHoursForDate.start} - {businessHoursForDate.end}
+                            📅 營業時間：10:00 - 20:30
                             <br />
                             🍽️ 13:00-14:00 午休時間
 
