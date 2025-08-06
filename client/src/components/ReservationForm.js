@@ -28,9 +28,9 @@ const generateTimeSlots = (startTime, endTime, isSaturday = false) => {
   while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
     const timeSlot = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
     
-    // 排除午休時段（12:30-14:00）
-    const isLunchBreak = (currentHour === 12 && currentMinute >= 30) || 
-                         (currentHour === 13 && currentMinute < 30);
+    // 排除午休時段（12:30-14:00）- 週六不排除
+    const isLunchBreak = !isSaturday && ((currentHour === 12 && currentMinute >= 30) || 
+                         (currentHour === 13 && currentMinute < 30));
     
     // 週六特殊處理：最晚預約時間17:00（因為預約時長1小時）
     const isSaturdayLateSlot = isSaturday && currentHour >= 17;
