@@ -141,7 +141,7 @@ class GoogleCalendarService {
     } else {
       // 預約事件
       event = {
-        summary: `📅 客戶預約 - ${reservation.name}`,
+        summary: `${reservation.name} ${reservation.phone}`,
         description: `
 📞 電話：${reservation.phone}
 📝 備註：${reservation.note || '無'}
