@@ -581,7 +581,7 @@ const ReservationForm = () => {
               <div className="notice-section">
                 <h4>📋 注意事項</h4>
                 <ul>
-                  <li>⏰ 預約時長一小時</li>
+                  <li>⏰ 試衣時長一小時</li>
                   <li>📞 修改 / 取消預約請提早來電通知</li>
                   <li>🧼 為提供您與其他顧客最佳體驗，請您來店前留意個人衛生與氣味，感謝配合</li>
                 </ul>
