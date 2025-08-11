@@ -440,8 +440,12 @@ const ReservationForm = () => {
                         <div className="business-hours-info">
                           <small>
                             📅 營業時間：10:00 - 20:30
-                            <br />
-                            🍽️ 13:00-14:00 午休時間
+                            {new Date(selectedDate).getDay() !== 6 && (
+                              <>
+                                <br />
+                                🍽️ 13:00-14:00 午休時間
+                              </>
+                            )}
 
                             {holidayInfo && holidayInfo.time_slots && holidayInfo.time_slots.length > 0 && (
                               <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
