@@ -12,7 +12,4 @@ healthcheckTimeout = 300
 
 [env]
 NODE_ENV = "production"
-PORT = "8080"
-GOOGLE_CLIENT_ID = "679955325298-b79n0f5f0l40ktckv2ql52jr3dg9q1ef.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET = "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"
-GOOGLE_REDIRECT_URI = "https://amaze-booking-system.zeabur.app/auth/callback" 
+PORT = "8080" 

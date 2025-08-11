@@ -8,22 +8,18 @@ const morgan = require('morgan');
 const moment = require('moment');
 const path = require("path");
 const { v4: uuidv4 } = require('uuid');
-const DatabaseService = require('./database');
 const GoogleCalendarService = require('./googleCalendar-oauth');
 const authRoutes = require('./auth-routes');
 const adminRoutes = require('./admin-routes');
 
 const app = express();
-const PORT = process.env.PORT || 3050;
+const PORT = process.env.PORT || 8080;
 
 // 中間件
 app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
-
-// 資料庫服務
-const db = new DatabaseService();
 
 // 工具函數
 const getWeekRange = (weekStr) => {
@@ -267,7 +263,7 @@ app.get('/api/reservations', async (req, res) => {
 
     const { startOfWeek, endOfWeek } = getWeekRange(week);
     
-    const weekReservations = await db.getReservationsByWeek(
+    const weekReservations = await calendarService.getEventsByWeekRange(
       startOfWeek.format('YYYY-MM-DD'),
       endOfWeek.format('YYYY-MM-DD')
     );
@@ -311,18 +307,8 @@ app.patch('/api/reservations/:id/check', async (req, res) => {
       });
     }
 
-    const reservation = await db.getReservation(id);
-    
-    if (!reservation) {
-      return res.status(404).json({
-        success: false,
-        message: '找不到指定的預約'
-      });
-    }
-
-    await db.updateReservationStatus(id, check);
-
-    const updatedReservation = await db.getReservation(id);
+    const calendarService = new GoogleCalendarService();
+    const updatedReservation = await calendarService.updateEventStatus(id, check);
 
     res.json({
       success: true,
@@ -344,20 +330,12 @@ app.delete('/api/reservations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const reservation = await db.getReservation(id);
-    
-    if (!reservation) {
-      return res.status(404).json({
-        success: false,
-        message: '找不到指定的預約'
-      });
-    }
-
-    await db.deleteReservation(id);
+    const calendarService = new GoogleCalendarService();
+    const deletedReservation = await calendarService.deleteEvent(id);
 
     res.json({
       success: true,
-      data: reservation,
+      data: deletedReservation,
       message: '預約刪除成功'
     });
 
@@ -373,7 +351,8 @@ app.delete('/api/reservations/:id', async (req, res) => {
 // 5. 取得所有預約（用於管理）
 app.get('/api/reservations/all', async (req, res) => {
   try {
-    const allReservations = await db.getAllReservations();
+    const calendarService = new GoogleCalendarService();
+    const allReservations = await calendarService.getAllEvents();
     
     const reservationsWithMaskedPhone = allReservations.map(reservation => ({
       ...reservation,
@@ -494,13 +473,13 @@ app.get("*", (req, res) => {
 });
 async function startServer() {
   try {
-    await db.connect();
-    console.log('✅ 資料庫連接成功');
+    // 資料庫連接已移除，不再需要
+    console.log('✅ 資料庫連接成功 (已移除)');
     
     app.listen(PORT, () => {
       console.log(`🚀 Amaze 預約系統後端 API 運行在 http://localhost:${PORT}`);
       console.log(`📅 健康檢查: http://localhost:${PORT}/api/health`);
-      console.log(`🗄️ 資料庫檔案: ${db.dbPath}`);
+      // 資料庫檔案路徑已移除，不再顯示
     });
   } catch (error) {
     console.error('❌ 啟動伺服器失敗:', error);

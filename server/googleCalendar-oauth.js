@@ -22,10 +22,25 @@ class GoogleCalendarService {
   // 載入已保存的令牌
   loadTokens() {
     try {
+      // 優先從環境變數讀取
+      if (process.env.GOOGLE_ACCESS_TOKEN && process.env.GOOGLE_REFRESH_TOKEN) {
+        const tokens = {
+          access_token: process.env.GOOGLE_ACCESS_TOKEN,
+          refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+          expiry_date: process.env.GOOGLE_TOKEN_EXPIRY ? parseInt(process.env.GOOGLE_TOKEN_EXPIRY) : null
+        };
+        this.oauth2Client.setCredentials(tokens);
+        console.log('✅ 已從環境變數載入令牌');
+        return;
+      }
+      
+      // 如果環境變數沒有，嘗試從檔案讀取（本地開發用）
       if (fs.existsSync('./tokens.json')) {
         const tokens = JSON.parse(fs.readFileSync('./tokens.json', 'utf8'));
         this.oauth2Client.setCredentials(tokens);
-        console.log('✅ 已載入保存的令牌');
+        console.log('✅ 已從檔案載入令牌');
+      } else {
+        console.log('⚠️ 無法載入令牌，需要重新授權');
       }
     } catch (error) {
       console.log('⚠️ 無法載入令牌，需要重新授權');
@@ -35,8 +50,20 @@ class GoogleCalendarService {
   // 保存令牌到文件
   saveTokens(tokens) {
     try {
-      fs.writeFileSync('./tokens.json', JSON.stringify(tokens, null, 2));
-      console.log('✅ 令牌已保存');
+      // 在 Zeabur 環境中，主要使用環境變數
+      // 這裡保留檔案儲存作為備用（本地開發用）
+      if (process.env.NODE_ENV !== 'production') {
+        fs.writeFileSync('./tokens.json', JSON.stringify(tokens, null, 2));
+        console.log('✅ 令牌已保存到檔案');
+      }
+      
+      // 在生產環境中，建議將令牌設置為環境變數
+      console.log('ℹ️ 在生產環境中，請將以下令牌設置為環境變數:');
+      console.log('GOOGLE_ACCESS_TOKEN:', tokens.access_token);
+      console.log('GOOGLE_REFRESH_TOKEN:', tokens.refresh_token);
+      if (tokens.expiry_date) {
+        console.log('GOOGLE_TOKEN_EXPIRY:', tokens.expiry_date);
+      }
     } catch (error) {
       console.error('❌ 保存令牌失敗:', error.message);
     }
@@ -419,6 +446,115 @@ class GoogleCalendarService {
       console.error("❌ 檢查時段衝突失敗:", error);
       // 如果無法連接到 Google Calendar，返回 false（允許預約）
       return false;
+    }
+  }
+
+  // 新增：根據週範圍獲取事件
+  async getEventsByWeekRange(startDate, endDate) {
+    try {
+      const response = await this.calendar.events.list({
+        calendarId: this.calendarId,
+        timeMin: `${startDate}T00:00:00+08:00`,
+        timeMax: `${endDate}T23:59:59+08:00`,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+      
+      // 轉換為預約格式
+      const reservations = response.data.items.map(event => {
+        const start = new Date(event.start.dateTime || event.start.date);
+        const end = new Date(event.end.dateTime || event.end.date);
+        
+        return {
+          id: event.id,
+          name: event.summary || '未命名預約',
+          phone: event.description || '',
+          date: start.toISOString().split('T')[0],
+          time: start.toTimeString().slice(0, 5),
+          note: event.description || '',
+          check: event.colorId === '1' ? '已確認' : '未確認', // 使用顏色來標記狀態
+          created_at: event.created,
+          updated_at: event.updated
+        };
+      });
+      
+      return reservations;
+    } catch (error) {
+      console.error('❌ 獲取週範圍事件失敗:', error);
+      throw error;
+    }
+  }
+
+  // 新增：更新事件狀態
+  async updateEventStatus(eventId, status) {
+    try {
+      // 獲取現有事件
+      const event = await this.getEvent(eventId);
+      
+      // 更新事件顏色（狀態標記）
+      const colorId = status === '已確認' ? '1' : '0';
+      
+      const updatedEvent = await this.calendar.events.patch({
+        calendarId: this.calendarId,
+        eventId: eventId,
+        resource: {
+          colorId: colorId
+        }
+      });
+      
+      console.log('✅ 事件狀態已更新:', eventId, status);
+      
+      // 返回更新後的事件
+      return {
+        id: updatedEvent.data.id,
+        name: updatedEvent.data.summary || '未命名預約',
+        phone: updatedEvent.data.description || '',
+        date: new Date(updatedEvent.data.start.dateTime || updatedEvent.data.start.date).toISOString().split('T')[0],
+        time: new Date(updatedEvent.data.start.dateTime || updatedEvent.data.start.date).toTimeString().slice(0, 5),
+        note: updatedEvent.data.description || '',
+        check: status,
+        created_at: updatedEvent.data.created,
+        updated_at: updatedEvent.data.updated
+      };
+    } catch (error) {
+      console.error('❌ 更新事件狀態失敗:', error);
+      throw error;
+    }
+  }
+
+  // 新增：獲取所有事件
+  async getAllEvents() {
+    try {
+      const response = await this.calendar.events.list({
+        calendarId: this.calendarId,
+        timeMin: new Date(new Date().getFullYear(), 0, 1).toISOString(), // 從今年年初開始
+        timeMax: new Date(new Date().getFullYear(), 11, 31, 23, 59, 59).toISOString(), // 到今年年底
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+      
+      // 轉換為預約格式
+      const reservations = response.data.items.map(event => {
+        const start = new Date(event.start.dateTime || event.start.date);
+        const end = new Date(event.end.dateTime || event.end.date);
+        
+        return {
+          id: event.id,
+          name: event.summary || '未命名預約',
+          phone: event.description || '',
+          date: start.toISOString().split('T')[0],
+          time: start.toTimeString().slice(0, 5),
+          note: event.description || '',
+          check: event.colorId === '1' ? '已確認' : '未確認',
+          created_at: event.created,
+          updated_at: event.updated
+        };
+      });
+      
+      return reservations;
+    } catch (error) {
+      console.error('❌ 獲取所有事件失敗:', error);
+      throw error;
     }
   }
 }
