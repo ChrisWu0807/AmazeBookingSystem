@@ -218,4 +218,4 @@ Google Calendar 事件包含：
 - ✅ 基本預約功能
 - ✅ Google Calendar 同步
 - ✅ 資料庫儲存
-- ✅ 時段衝突檢查 
+- ✅ 時段衝突檢查 # 重新部署觸發 - Mon Aug 11 11:50:40 CST 2025
