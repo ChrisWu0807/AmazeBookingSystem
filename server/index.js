@@ -34,70 +34,6 @@ const maskPhoneNumber = (phone) => {
   return phone.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2');
 };
 
-// Webhook 發送函數
-const sendReminderWebhook = async (reservationData) => {
-  try {
-    const webhookUrl = 'https://amazebookingfollowup.zeabur.app/webhook/962ff2e9-af9a-4eab-bed9-692af50e95d9';
-    
-    // 構建查詢參數
-    const params = new URLSearchParams({
-      reservation_id: reservationData.id,
-      name: reservationData.name,
-      phone: reservationData.phone,
-      date: reservationData.date,
-      time: reservationData.time,
-      note: reservationData.note || '',
-      created_at: new Date().toISOString()
-    });
-
-    const fullUrl = `${webhookUrl}?${params.toString()}`;
-    console.log('📤 發送提醒 webhook:', fullUrl);
-
-    // 使用 Node.js 原生的 https 模組
-    const https = require('https');
-    const url = require('url');
-    
-    const parsedUrl = url.parse(fullUrl);
-    
-    const options = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || 443,
-      path: parsedUrl.path,
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Amaze-Booking-System/1.0'
-      }
-    };
-
-    return new Promise((resolve, reject) => {
-      const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            console.log('✅ 提醒 webhook 發送成功');
-            resolve(data);
-          } else {
-            console.error('❌ 提醒 webhook 發送失敗:', res.statusCode, data);
-            reject(new Error(`HTTP ${res.statusCode}: ${data}`));
-          }
-        });
-      });
-
-      req.on('error', (error) => {
-        console.error('❌ 發送提醒 webhook 失敗:', error.message);
-        reject(error);
-      });
-
-      req.end();
-    });
-  } catch (error) {
-    console.error('❌ 發送提醒 webhook 失敗:', error.message);
-  }
-};
-
 // 添加授權路由
 app.use('/api', authRoutes);
 
@@ -216,12 +152,6 @@ app.post('/api/reservations', async (req, res) => {
     try {
       const calendarEvent = await calendarService.createEvent(newReservation);
       console.log('✅ 預約已同步到 Google Calendar');
-      
-      // 發送提醒 webhook 到 n8n
-      await sendReminderWebhook({
-        ...newReservation,
-        calendarEventId: calendarEvent.id
-      });
       
       res.status(201).json({
         success: true,
