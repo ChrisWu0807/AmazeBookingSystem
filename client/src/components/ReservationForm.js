@@ -439,7 +439,7 @@ const ReservationForm = () => {
                       {businessHoursForDate && (
                         <div className="business-hours-info">
                           <small>
-                            📅 營業時間：10:00 - 20:30
+                            📅 營業時間：{new Date(selectedDate).getDay() === 6 ? '12:00 - 18:00' : '10:00 - 20:30'}
                             {new Date(selectedDate).getDay() !== 6 && (
                               <>
                                 <br />
