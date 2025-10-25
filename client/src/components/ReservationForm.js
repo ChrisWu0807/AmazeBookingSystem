@@ -354,22 +354,6 @@ const ReservationForm = () => {
         線上預約系統
       </h1>
       
-      {/* 中秋節公告 */}
-      <div className="form-container">
-        <div className="alert alert-warning" style={{ 
-          marginBottom: '20px', 
-          fontSize: '16px', 
-          fontWeight: 'bold',
-          textAlign: 'center',
-          padding: '15px',
-          backgroundColor: '#fff3cd',
-          border: '2px solid #ffc107',
-          borderRadius: '8px'
-        }}>
-          🌕 中秋節公告：10/4 (六) - 10/6 (一) 暫停營業，祝大家中秋節快樂！
-        </div>
-      </div>
-      
       <div className="form-container">
         <div className="card">
           {message.text && (
