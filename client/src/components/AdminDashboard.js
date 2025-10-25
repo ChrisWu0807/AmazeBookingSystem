@@ -11,7 +11,8 @@ import {
   XCircle,
   AlertCircle,
   BarChart3,
-  CalendarDays
+  CalendarDays,
+  Ban
 } from 'lucide-react';
 import api from '../config/api';
 
@@ -49,6 +50,12 @@ const AdminDashboard = () => {
   const [timeRestrictions, setTimeRestrictions] = useState([
     { start_time: '', end_time: '' }
   ]);
+
+  // 快速關閉狀態
+  const [quickClose, setQuickClose] = useState({
+    date: '',
+    reason: ''
+  });
 
   // 管理員token（實際應用中應該從登入獲取）
   const adminToken = 'amaze-admin-2024';
@@ -193,6 +200,39 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('刪除假日失敗:', error);
       setMessage({ type: 'error', text: '刪除假日失敗' });
+    }
+  };
+
+  // 快速關閉日期
+  const quickCloseDate = async () => {
+    if (!quickClose.date) {
+      setMessage({ type: 'error', text: '請選擇要關閉的日期' });
+      return;
+    }
+
+    const reason = quickClose.reason || '暫停預約';
+    const description = `假日 - ${reason}`;
+
+    try {
+      const holidayData = {
+        start_date: quickClose.date,
+        end_date: quickClose.date,
+        description: description,
+        time_slots: []
+      };
+
+      const response = await api.post('/admin/holidays', holidayData, {
+        headers: { 'admin-token': adminToken }
+      });
+
+      if (response.data.success) {
+        setMessage({ type: 'success', text: `${quickClose.date} 已成功關閉預約` });
+        setQuickClose({ date: '', reason: '' });
+        fetchHolidays();
+      }
+    } catch (error) {
+      console.error('快速關閉日期失敗:', error);
+      setMessage({ type: 'error', text: error.response?.data?.message || '快速關閉日期失敗' });
     }
   };
 
@@ -437,6 +477,51 @@ const AdminDashboard = () => {
       {/* 假日管理 */}
       {activeTab === 'holidays' && (
         <div className="tab-content">
+          {/* 快速關閉日期 */}
+          <div className="quick-close-section" style={{ 
+            background: '#fff', 
+            padding: '20px', 
+            borderRadius: '8px', 
+            marginBottom: '20px',
+            border: '2px solid #e74c3c'
+          }}>
+            <h3 style={{ color: '#e74c3c', marginBottom: '16px' }}>
+              🚫 快速關閉日期
+            </h3>
+            <div className="form-row">
+              <div className="form-group">
+                <label>選擇日期：</label>
+                <input
+                  type="date"
+                  value={quickClose.date}
+                  onChange={(e) => setQuickClose(prev => ({ ...prev, date: e.target.value }))}
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>原因（可選）：</label>
+                <input
+                  type="text"
+                  value={quickClose.reason}
+                  onChange={(e) => setQuickClose(prev => ({ ...prev, reason: e.target.value }))}
+                  className="form-input"
+                  placeholder="例：設備維護、活動準備"
+                />
+              </div>
+            </div>
+            <button 
+              onClick={quickCloseDate} 
+              className="btn-primary"
+              style={{ background: '#e74c3c', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Ban size={16} />
+              立即關閉此日期
+            </button>
+            <small style={{ display: 'block', color: '#666', marginTop: '8px' }}>
+              ⚠️ 注意：此操作會立即關閉選定日期的所有預約，客戶將無法預約該日期
+            </small>
+          </div>
+
           <div className="holiday-form">
             <h3>新增假日</h3>
             <div className="form-row">
